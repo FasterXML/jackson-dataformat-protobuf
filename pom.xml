@@ -19,7 +19,7 @@
   <parent>
     <groupId>com.fasterxml</groupId>
     <artifactId>oss-parent</artifactId>
-    <version>7</version>
+    <version>9</version>
   </parent>
   <groupId>com.fasterxml.jackson.dataformat</groupId>
   <artifactId>jackson-dataformat-protobuf</artifactId>
@@ -37,13 +37,13 @@ abstractions.
   </scm>
 
   <properties>
-    <jackson.core.version>2.2.0-SNAPSHOT</jackson.core.version>
+    <jackson.core.version>2.2.0-rcc1</jackson.core.version>
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
-    <packageVersion.package>com.fasterxml.jackson.dataformat.protobuf</packageVersion.package>
+    <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
     <!--
      | Configuration properties for the OSGi maven-bundle-plugin
     -->
-    <osgi.export>com.fasterxml.jackson.dataformat.protobuf.*; version=${project.version}
+    <osgi.export>${project.groupId}.protobuf.*; version=${project.version}
 </osgi.export>
 
   </properties>
