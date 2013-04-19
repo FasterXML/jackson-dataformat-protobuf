@@ -128,6 +128,6 @@ public class ProtobufSchemaLoader
     }
 
     protected ProtobufSchema schema(ProtoFile nativeSchema) {
-        return new ProtobufSchema(nativeSchema);
+        return ProtobufSchema.construct(nativeSchema);
     }
 }
