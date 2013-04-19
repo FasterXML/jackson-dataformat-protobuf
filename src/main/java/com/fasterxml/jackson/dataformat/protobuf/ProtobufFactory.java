@@ -19,7 +19,7 @@ public class ProtobufFactory extends JsonFactory
     public ProtobufFactory() { }
 
     public ProtobufFactory(ObjectCodec codec) {
-        super(oc);
+        super(codec);
     }
 
     /*                                                                                       
