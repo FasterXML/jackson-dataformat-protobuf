@@ -22,6 +22,22 @@ public class NativeProtobufSchema
     }
 
     /**
+     * Method for checking whether specified message type is defined by
+     * the native schema
+     */
+    public boolean hasMessageType(String messageTypeName)
+    {
+        for (Type type : _native.getTypes()) {
+            if (messageTypeName.equals(type.getName())) {
+                if (type instanceof MessageType) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    /**
      * Factory method for constructing Jackson-digestible schema using specified Message type
      * from native protobuf schema.
      */

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.*;
 
 import junit.framework.TestCase;
 
-public class ProtobufTestBase extends TestCase
+abstract class ProtobufTestBase extends TestCase
 {
     /*
     /**********************************************************
