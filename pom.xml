@@ -30,9 +30,9 @@ abstractions.
   </description>
   <url>http://wiki.fasterxml.com/JacksonExtensionProtobuf</url>
   <scm>
-    <connection>scm:git:git@github.com:FasterXML/jackson-dataformat-avro.git</connection>
-    <developerConnection>scm:git:git@github.com:FasterXML/jackson-dataformat-avro.git</developerConnection>
-    <url>http://github.com/FasterXML/jackson-dataformat-avro</url>    
+    <connection>scm:git:git@github.com:FasterXML/jackson-dataformat-protobuf.git</connection>
+    <developerConnection>scm:git:git@github.com:FasterXML/jackson-dataformat-protobuf.git</developerConnection>
+    <url>http://github.com/FasterXML/jackson-dataformat-protobuf</url>    
     <tag>HEAD</tag>
   </scm>
 
