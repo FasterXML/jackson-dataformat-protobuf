@@ -22,7 +22,7 @@ public class ProtobufSchemaLoader
 
     public final static String DEFAULT_SCHEMA_NAME = "Unnamed-protobuf-schema";
     
-    protected final static ProtobufSchemaLoader DEFAULT_INSTANCE = new ProtobufSchemaLoader();
+    public final static ProtobufSchemaLoader DEFAULT_INSTANCE = new ProtobufSchemaLoader();
     
     public ProtobufSchemaLoader() { }
 
