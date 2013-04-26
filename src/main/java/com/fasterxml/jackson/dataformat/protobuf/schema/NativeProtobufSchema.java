@@ -1,5 +1,7 @@
 package com.fasterxml.jackson.dataformat.protobuf.schema;
 
+import java.util.*;
+
 import com.squareup.proto.MessageType;
 import com.squareup.proto.ProtoFile;
 import com.squareup.proto.Type;
@@ -17,7 +19,12 @@ public class NativeProtobufSchema
         _native = input;
     }
 
-    public static NativeProtobufSchema construct(ProtoFile input) {
+    public static NativeProtobufSchema construct(ProtoFile input)
+    {
+        Map<String,ProtobufMessage> messageTypes = new HashMap<String,ProtobufMessage>();
+        Map<String,ProtobufEnum> enumTypes = new HashMap<String,ProtobufEnum>();
+        
+        
         return new NativeProtobufSchema(input);
     }
 
