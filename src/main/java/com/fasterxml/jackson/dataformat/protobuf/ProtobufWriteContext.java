@@ -1,6 +1,7 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
 import com.fasterxml.jackson.core.JsonStreamContext;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 
 public abstract class ProtobufWriteContext
     extends JsonStreamContext

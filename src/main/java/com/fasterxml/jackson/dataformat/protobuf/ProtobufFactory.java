@@ -5,6 +5,7 @@ import java.io.IOException;
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 
 public class ProtobufFactory extends JsonFactory
 {

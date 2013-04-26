@@ -1,5 +1,8 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
+import com.fasterxml.jackson.dataformat.protobuf.schema.NativeProtobufSchema;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
+
 public class TestSchemaHandling extends ProtobufTestBase
 {
     public void testSimple() throws Exception

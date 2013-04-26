@@ -8,6 +8,7 @@ import java.util.Arrays;
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.base.GeneratorBase;
 import com.fasterxml.jackson.core.io.IOContext;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 
 public class ProtobufGenerator extends GeneratorBase
 {

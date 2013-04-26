@@ -1,4 +1,4 @@
-package com.fasterxml.jackson.dataformat.protobuf;
+package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import com.fasterxml.jackson.core.FormatSchema;
 import com.squareup.proto.MessageType;

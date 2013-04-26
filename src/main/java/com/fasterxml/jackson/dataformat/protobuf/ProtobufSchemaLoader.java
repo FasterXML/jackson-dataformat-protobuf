@@ -4,6 +4,8 @@ import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
 
+import com.fasterxml.jackson.dataformat.protobuf.schema.NativeProtobufSchema;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.squareup.proto.ProtoFile;
 import com.squareup.proto.ProtoSchemaParser;
 
