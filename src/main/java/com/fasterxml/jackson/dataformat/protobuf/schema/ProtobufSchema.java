@@ -10,7 +10,8 @@ public class ProtobufSchema implements FormatSchema
 
     protected ProtobufSchema() { }
     
-    public static ProtobufSchema construct(ProtoFile nativeSchema, MessageType rootType) {
+    public static ProtobufSchema construct(ProtoFile nativeSchema, MessageType rootType)
+    {
         // !!! TODO
         return new ProtobufSchema();
     }
