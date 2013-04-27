@@ -5,6 +5,7 @@ import java.io.IOException;
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
+
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 
 public class ProtobufFactory extends JsonFactory
@@ -21,6 +22,34 @@ public class ProtobufFactory extends JsonFactory
 
     public ProtobufFactory(ObjectCodec codec) {
         super(codec);
+    }
+    protected ProtobufFactory(ProtobufFactory src, ObjectCodec oc)
+    {
+        super(src, oc);
+        // TODO: copy feature flags, once those are added
+    }
+
+    @Override
+    public ProtobufFactory copy()
+    {
+        _checkInvalidCopy(ProtobufFactory.class);
+        return new ProtobufFactory(this, null);
+    }
+
+    /*
+    /**********************************************************
+    /* Serializable overrides
+    /**********************************************************
+     */
+
+    /**
+     * Method that we need to override to actually make restoration go
+     * through constructors etc.
+     * Also: must be overridden by sub-classes as well.
+     */
+    @Override
+    protected Object readResolve() {
+        return new ProtobufFactory(this, _objectCodec);
     }
 
     /*                                                                                       
