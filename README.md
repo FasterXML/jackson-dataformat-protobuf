@@ -5,15 +5,12 @@ for reading and writing [Protobuf](http://code.google.com/p/protobuf/) encoded d
 This project adds necessary abstractions on top to make things work with other Jackson functionality;
 mostly just low-level Streaming components (`JsonFactory`, `JsonParser`, `JsonGenerator`).
 
-[square/protoparser](https://github.com/square/protoparser) library is used 
- for parsing `protoc` files (protobuf IDLs).
-(note: another library, [Protostuff](http://code.google.com/p/protostuff/), also has usable parser)
-
 Project is licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt).
 
 ## Dependencies
 
-Protoc parsing is done using 
+Protoc (protobuf IDL) parsing is done using [square/protoparser](https://github.com/square/protoparser) library.
+(note: another library, [Protostuff](http://code.google.com/p/protostuff/), also has usable parser)
 
 # Status
 
