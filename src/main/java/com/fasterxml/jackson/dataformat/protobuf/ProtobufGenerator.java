@@ -85,7 +85,7 @@ public class ProtobufGenerator extends GeneratorBase
     /**
      * Current context
      */
-    protected ProtobufWriteContext _avroContext;
+    protected ProtobufWriteContext _currentContext;
 
     /**
      * Flag that is set when the whole content is complete, can
@@ -99,15 +99,15 @@ public class ProtobufGenerator extends GeneratorBase
     /**********************************************************
      */
 
-    public ProtobufGenerator(IOContext ctxt, int jsonFeatures, int avroFeatures,
+    public ProtobufGenerator(IOContext ctxt, int jsonFeatures, int pbFeatures,
             ObjectCodec codec, OutputStream output)
         throws IOException
     {
         super(jsonFeatures, codec);
         _ioContext = ctxt;
-        _protobufFeatures = avroFeatures;
+        _protobufFeatures = pbFeatures;
         _output = output;
-        _avroContext = ProtobufWriteContext.createNullContext();
+        _currentContext = ProtobufWriteContext.createNullContext();
     }
 
     public void setSchema(ProtobufSchema schema)
@@ -117,8 +117,8 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _rootSchema = schema;
         // start with temporary root...
-//        _avroContext = _rootContext = ProtobufWriteContext.createRootContext(this, schema.getAvroSchema());
-        _avroContext = _rootContext = ProtobufWriteContext.createRootContext(this, schema);
+//        _currentContext = _rootContext = ProtobufWriteContext.createRootContext(this, schema);
+        _currentContext = _rootContext = ProtobufWriteContext.createRootContext(this, schema);
     }
     
     /*                                                                                       
@@ -193,21 +193,21 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public final void writeFieldName(String name) throws IOException, JsonGenerationException
     {
-        _avroContext.writeFieldName(name);
+        _currentContext.writeFieldName(name);
     }
 
     @Override
     public final void writeFieldName(SerializableString name)
         throws IOException, JsonGenerationException
     {
-        _avroContext.writeFieldName(name.getValue());
+        _currentContext.writeFieldName(name.getValue());
     }
 
     @Override
     public final void writeStringField(String fieldName, String value)
         throws IOException, JsonGenerationException
     {
-        _avroContext.writeFieldName(fieldName);
+        _currentContext.writeFieldName(fieldName);
         writeString(value);
     }
     
@@ -258,7 +258,7 @@ public class ProtobufGenerator extends GeneratorBase
         super.close();
         if (isEnabled(JsonGenerator.Feature.AUTO_CLOSE_JSON_CONTENT)) {
             ProtobufWriteContext ctxt;
-            while ((ctxt = _avroContext) != null) {
+            while ((ctxt = _currentContext) != null) {
                 if (ctxt.inArray()) {
                     writeEndArray();
                 } else if (ctxt.inObject()) {
@@ -293,17 +293,17 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public final void writeStartArray() throws IOException, JsonGenerationException
     {
-        _avroContext = _avroContext.createChildArrayContext();
+        _currentContext = _currentContext.createChildArrayContext();
     }
     
     @Override
     public final void writeEndArray() throws IOException, JsonGenerationException
     {
-        if (!_avroContext.inArray()) {
-            _reportError("Current context not an ARRAY but "+_avroContext.getTypeDesc());
+        if (!_currentContext.inArray()) {
+            _reportError("Current context not an ARRAY but "+_currentContext.getTypeDesc());
         }
-        _avroContext = _avroContext.getParent();
-        if (_avroContext.inRoot() && !_complete) {
+        _currentContext = _currentContext.getParent();
+        if (_currentContext.inRoot() && !_complete) {
             _complete();
         }
     }
@@ -311,20 +311,20 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public final void writeStartObject() throws IOException, JsonGenerationException
     {
-        _avroContext = _avroContext.createChildObjectContext();
+        _currentContext = _currentContext.createChildObjectContext();
     }
 
     @Override
     public final void writeEndObject() throws IOException, JsonGenerationException
     {
-        if (!_avroContext.inObject()) {
-            _reportError("Current context not an object but "+_avroContext.getTypeDesc());
+        if (!_currentContext.inObject()) {
+            _reportError("Current context not an object but "+_currentContext.getTypeDesc());
         }
-        if (!_avroContext.canClose()) {
+        if (!_currentContext.canClose()) {
             _reportError("Can not write END_OBJECT after writing FIELD_NAME but not value");
         }
-        _avroContext = _avroContext.getParent();
-        if (_avroContext.inRoot() && !_complete) {
+        _currentContext = _currentContext.getParent();
+        if (_currentContext.inRoot() && !_complete) {
             _complete();
         }
     }
@@ -342,7 +342,7 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
-        _avroContext.writeValue(text);
+        _currentContext.writeValue(text);
     }
 
     @Override
@@ -433,9 +433,9 @@ public class ProtobufGenerator extends GeneratorBase
         }
         final int end = offset+len;
         if (offset != 0 || end != data.length) {
-            _avroContext.writeValue(Arrays.copyOfRange(data, offset, end));
+            _currentContext.writeValue(Arrays.copyOfRange(data, offset, end));
         } else {
-            _avroContext.writeValue(data);
+            _currentContext.writeValue(data);
         }
 
         //        String encoded = b64variant.encode(data);
@@ -451,25 +451,25 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public void writeBoolean(boolean state) throws IOException, JsonGenerationException
     {
-        _avroContext.writeValue(state ? Boolean.TRUE : Boolean.FALSE);
+        _currentContext.writeValue(state ? Boolean.TRUE : Boolean.FALSE);
     }
 
     @Override
     public void writeNull() throws IOException, JsonGenerationException
     {
-        _avroContext.writeValue(null);
+        _currentContext.writeValue(null);
     }
 
     @Override
     public void writeNumber(int i) throws IOException, JsonGenerationException
     {
-        _avroContext.writeValue(Integer.valueOf(i));
+        _currentContext.writeValue(Integer.valueOf(i));
     }
 
     @Override
     public void writeNumber(long l) throws IOException, JsonGenerationException
     {
-        _avroContext.writeValue(Long.valueOf(l));
+        _currentContext.writeValue(Long.valueOf(l));
     }
 
     @Override
@@ -479,19 +479,19 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
-        _avroContext.writeValue(v);
+        _currentContext.writeValue(v);
     }
     
     @Override
     public void writeNumber(double d) throws IOException, JsonGenerationException
     {
-        _avroContext.writeValue(Double.valueOf(d));
+        _currentContext.writeValue(Double.valueOf(d));
     }    
 
     @Override
     public void writeNumber(float f) throws IOException, JsonGenerationException
     {
-        _avroContext.writeValue(Float.valueOf(f));
+        _currentContext.writeValue(Float.valueOf(f));
     }
 
     @Override
@@ -501,7 +501,7 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
-        _avroContext.writeValue(dec);
+        _currentContext.writeValue(dec);
     }
 
     @Override
