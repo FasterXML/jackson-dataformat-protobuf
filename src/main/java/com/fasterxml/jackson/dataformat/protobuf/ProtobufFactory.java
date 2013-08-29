@@ -5,7 +5,6 @@ import java.io.IOException;
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
-
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 
 public class ProtobufFactory extends JsonFactory
@@ -63,6 +62,18 @@ public class ProtobufFactory extends JsonFactory
         return PackageVersion.VERSION;
     }
 
+    /*
+    /**********************************************************
+    /* Capability introspection
+    /**********************************************************
+     */
+
+    // Yes; Protobuf is positional
+    @Override
+    public boolean requiresPropertyOrdering() {
+        return true;
+    }
+    
     /*
     /**********************************************************
     /* Format detection functionality

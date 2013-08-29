@@ -18,11 +18,12 @@ public class ProtobufGenerator extends GeneratorBase
     public enum Feature {
         /**
          * Feature that can be enabled to quietly ignore serialization of unknown
-         * properties.
+         * fields.
          *<p>
-         * Feature is disabled by default
+         * Feature is disabled by default, so that an exception is thrown if unknown
+         * fields are encountered.
          */
-        IGNORE_UNKNOWN(false)
+        IGNORE_UNKNOWN_FIELDS(false)
         ;
 
         protected final boolean _defaultState;
