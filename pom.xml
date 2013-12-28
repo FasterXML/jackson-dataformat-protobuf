@@ -4,12 +4,12 @@
   <parent>
     <groupId>com.fasterxml</groupId>
     <artifactId>oss-parent</artifactId>
-    <version>11</version>
+    <version>12</version>
   </parent>
   <groupId>com.fasterxml.jackson.dataformat</groupId>
   <artifactId>jackson-dataformat-protobuf</artifactId>
   <name>Jackson-dataformat-protobuf</name>
-  <version>2.3.0-SNAPSHOT</version>
+  <version>2.4.0-SNAPSHOT</version>
   <packaging>bundle</packaging>
   <description>Support for reading and writing protobuf-encoded data via Jackson
 abstractions.
@@ -23,7 +23,9 @@ abstractions.
   </scm>
 
   <properties>
-    <jackson.core.version>2.3.0-SNAPSHOT</jackson.core.version>
+    <jackson.version.annotations>2.3.0</jackson.version.annotations>
+    <jackson.version.core>2.3.1</jackson.version.core>
+
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
     <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
     <!--
@@ -39,13 +41,13 @@ abstractions.
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
-      <version>${jackson.core.version}</version>
+      <version>${jackson.version.core}</version>
     </dependency>
     <!--  Hmmh. Need databind for schema generation... -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>${jackson.core.version}</version>
+      <version>${jackson.version.core}</version>
     </dependency>
 <!--
     <dependency>
@@ -70,7 +72,7 @@ abstractions.
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.core.version}</version>
+      <version>${jackson.version.annotations}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
