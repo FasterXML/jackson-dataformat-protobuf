@@ -1,7 +1,8 @@
 ## Overview
 
 Project contains [Jackson](http://http://wiki.fasterxml.com/JacksonHome) extension component
-for reading and writing [Protobuf](http://code.google.com/p/protobuf/) encoded data.
+for reading and writing [Protobuf](http://code.google.com/p/protobuf/) encoded data (see
+[protobuf encoding spec](https://developers.google.com/protocol-buffers/docs/encoding)).
 This project adds necessary abstractions on top to make things work with other Jackson functionality;
 mostly just low-level Streaming components (`JsonFactory`, `JsonParser`, `JsonGenerator`).
 
@@ -14,10 +15,7 @@ Protoc (protobuf IDL) parsing is done using [square/protoparser](https://github.
 
 # Status
 
-(22-Apr-2013): Still in initial prototyping phase:
+(Jan-2014): Still in initial prototyping phase:
 
  * Basic integration of `protoparser` exists, looks like we can read protoc stuff as expected. * Starting to work on `ProtobufGenerator` first, seems slightly simpler
     * one complex part: protobuf uses length-prefixing, which is a major PITA for embedded messages
-
-
-
