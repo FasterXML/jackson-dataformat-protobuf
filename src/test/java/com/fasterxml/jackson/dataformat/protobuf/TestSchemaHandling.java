@@ -2,6 +2,7 @@ package com.fasterxml.jackson.dataformat.protobuf;
 
 import com.fasterxml.jackson.dataformat.protobuf.schema.NativeProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
 public class TestSchemaHandling extends ProtobufTestBase
 {

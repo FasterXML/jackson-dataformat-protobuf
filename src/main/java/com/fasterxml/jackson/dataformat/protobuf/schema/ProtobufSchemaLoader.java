@@ -1,13 +1,11 @@
-package com.fasterxml.jackson.dataformat.protobuf;
+package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
 
-import com.fasterxml.jackson.dataformat.protobuf.schema.NativeProtobufSchema;
-import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
-import com.squareup.proto.ProtoFile;
-import com.squareup.proto.ProtoSchemaParser;
+import com.squareup.protoparser.ProtoFile;
+import com.squareup.protoparser.ProtoSchemaParser;
 
 /**
  * Class used for loading protobuf definitions (from .proto files

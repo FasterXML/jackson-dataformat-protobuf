@@ -69,30 +69,52 @@ public class ProtobufGenerator extends GeneratorBase
     protected int _protobufFeatures;
 
     protected ProtobufSchema _rootSchema;
-    
+
     /*
     /**********************************************************
     /* Output state
     /**********************************************************
      */
 
-    final protected OutputStream _output;
-    
     /**
      * Reference to the root context since that is needed for serialization
      */
     protected ProtobufWriteContext _rootContext;
 
     /**
-     * Current context
-     */
-    protected ProtobufWriteContext _currentContext;
-
-    /**
      * Flag that is set when the whole content is complete, can
      * be output.
      */
     protected boolean _complete;
+
+    /**
+     * Low-level id of the field
+     */
+    protected int _fieldId;
+    
+    /*
+    /**********************************************************
+    /* Output buffering
+    /**********************************************************
+     */
+
+    /**
+     * Ultimate destination
+     */
+    final protected OutputStream _output;
+
+    /**
+     * Current context
+     */
+    protected ProtobufWriteContext _currentContext;
+
+    protected byte[] _currentBuffer;
+
+    protected int _currentEnd;
+    
+    protected int _currentStart;
+    
+    protected int _currentPtr;
     
     /*
     /**********************************************************
@@ -109,6 +131,7 @@ public class ProtobufGenerator extends GeneratorBase
         _protobufFeatures = pbFeatures;
         _output = output;
         _currentContext = ProtobufWriteContext.createNullContext();
+        _currentBuffer = ctxt.allocWriteEncodingBuffer();
     }
 
     public void setSchema(ProtobufSchema schema)
@@ -140,18 +163,14 @@ public class ProtobufGenerator extends GeneratorBase
      */
 
     /**
-     * Not sure what to do here; could reset indentation to some value maybe?
+     * Not sure whether to throw an exception or just do no-op; for now,
+     * latter.
      */
     @Override
-    public ProtobufGenerator useDefaultPrettyPrinter()
-    {
+    public ProtobufGenerator useDefaultPrettyPrinter() {
         return this;
     }
 
-    /**
-     * Not sure what to do here; will always indent, but uses
-     * YAML-specific settings etc.
-     */
     @Override
     public ProtobufGenerator setPrettyPrinter(PrettyPrinter pp) {
         return this;
@@ -192,22 +211,17 @@ public class ProtobufGenerator extends GeneratorBase
      */
 
     @Override
-    public final void writeFieldName(String name) throws IOException, JsonGenerationException
-    {
+    public final void writeFieldName(String name) throws IOException {
         _currentContext.writeFieldName(name);
     }
 
     @Override
-    public final void writeFieldName(SerializableString name)
-        throws IOException, JsonGenerationException
-    {
+    public final void writeFieldName(SerializableString name) throws IOException {
         _currentContext.writeFieldName(name.getValue());
     }
 
     @Override
-    public final void writeStringField(String fieldName, String value)
-        throws IOException, JsonGenerationException
-    {
+    public final void writeStringField(String fieldName, String value) throws IOException {
         _currentContext.writeFieldName(fieldName);
         writeString(value);
     }
@@ -292,13 +306,13 @@ public class ProtobufGenerator extends GeneratorBase
      */
     
     @Override
-    public final void writeStartArray() throws IOException, JsonGenerationException
+    public final void writeStartArray() throws IOException
     {
         _currentContext = _currentContext.createChildArrayContext();
     }
     
     @Override
-    public final void writeEndArray() throws IOException, JsonGenerationException
+    public final void writeEndArray() throws IOException
     {
         if (!_currentContext.inArray()) {
             _reportError("Current context not an ARRAY but "+_currentContext.getTypeDesc());
@@ -310,13 +324,13 @@ public class ProtobufGenerator extends GeneratorBase
     }
 
     @Override
-    public final void writeStartObject() throws IOException, JsonGenerationException
+    public final void writeStartObject() throws IOException
     {
         _currentContext = _currentContext.createChildObjectContext();
     }
 
     @Override
-    public final void writeEndObject() throws IOException, JsonGenerationException
+    public final void writeEndObject() throws IOException
     {
         if (!_currentContext.inObject()) {
             _reportError("Current context not an object but "+_currentContext.getTypeDesc());
@@ -347,28 +361,28 @@ public class ProtobufGenerator extends GeneratorBase
     }
 
     @Override
-    public void writeString(char[] text, int offset, int len) throws IOException, JsonGenerationException
+    public void writeString(char[] text, int offset, int len) throws IOException
     {
         writeString(new String(text, offset, len));
     }
 
     @Override
     public final void writeString(SerializableString sstr)
-        throws IOException, JsonGenerationException
+        throws IOException
     {
         writeString(sstr.toString());
     }
 
     @Override
     public void writeRawUTF8String(byte[] text, int offset, int len)
-        throws IOException, JsonGenerationException
+        throws IOException
     {
         _reportUnsupportedOperation();
     }
 
     @Override
     public final void writeUTF8String(byte[] text, int offset, int len)
-        throws IOException, JsonGenerationException
+        throws IOException
     {
         writeString(new String(text, offset, len, "UTF-8"));
     }
@@ -380,37 +394,37 @@ public class ProtobufGenerator extends GeneratorBase
      */
 
     @Override
-    public void writeRaw(String text) throws IOException, JsonGenerationException {
+    public void writeRaw(String text) throws IOException {
         _reportUnsupportedOperation();
     }
 
     @Override
-    public void writeRaw(String text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRaw(String text, int offset, int len) throws IOException {
         _reportUnsupportedOperation();
     }
 
     @Override
-    public void writeRaw(char[] text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRaw(char[] text, int offset, int len) throws IOException {
         _reportUnsupportedOperation();
     }
 
     @Override
-    public void writeRaw(char c) throws IOException, JsonGenerationException {
+    public void writeRaw(char c) throws IOException {
         _reportUnsupportedOperation();
     }
 
     @Override
-    public void writeRawValue(String text) throws IOException, JsonGenerationException {
+    public void writeRawValue(String text) throws IOException {
         _reportUnsupportedOperation();
     }
 
     @Override
-    public void writeRawValue(String text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRawValue(String text, int offset, int len) throws IOException {
         _reportUnsupportedOperation();
     }
 
     @Override
-    public void writeRawValue(char[] text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRawValue(char[] text, int offset, int len) throws IOException {
         _reportUnsupportedOperation();
     }
 
@@ -421,7 +435,7 @@ public class ProtobufGenerator extends GeneratorBase
      */
     
     @Override
-    public void writeBinary(Base64Variant b64variant, byte[] data, int offset, int len) throws IOException, JsonGenerationException
+    public void writeBinary(Base64Variant b64variant, byte[] data, int offset, int len) throws IOException
     {
         if (data == null) {
             writeNull();
@@ -450,31 +464,31 @@ public class ProtobufGenerator extends GeneratorBase
      */
 
     @Override
-    public void writeBoolean(boolean state) throws IOException, JsonGenerationException
+    public void writeBoolean(boolean state) throws IOException
     {
         _currentContext.writeValue(state ? Boolean.TRUE : Boolean.FALSE);
     }
 
     @Override
-    public void writeNull() throws IOException, JsonGenerationException
+    public void writeNull() throws IOException
     {
         _currentContext.writeValue(null);
     }
 
     @Override
-    public void writeNumber(int i) throws IOException, JsonGenerationException
+    public void writeNumber(int i) throws IOException
     {
         _currentContext.writeValue(Integer.valueOf(i));
     }
 
     @Override
-    public void writeNumber(long l) throws IOException, JsonGenerationException
+    public void writeNumber(long l) throws IOException
     {
         _currentContext.writeValue(Long.valueOf(l));
     }
 
     @Override
-    public void writeNumber(BigInteger v) throws IOException, JsonGenerationException
+    public void writeNumber(BigInteger v) throws IOException
     {
         if (v == null) {
             writeNull();
@@ -484,19 +498,19 @@ public class ProtobufGenerator extends GeneratorBase
     }
     
     @Override
-    public void writeNumber(double d) throws IOException, JsonGenerationException
+    public void writeNumber(double d) throws IOException
     {
         _currentContext.writeValue(Double.valueOf(d));
     }    
 
     @Override
-    public void writeNumber(float f) throws IOException, JsonGenerationException
+    public void writeNumber(float f) throws IOException
     {
         _currentContext.writeValue(Float.valueOf(f));
     }
 
     @Override
-    public void writeNumber(BigDecimal dec) throws IOException, JsonGenerationException
+    public void writeNumber(BigDecimal dec) throws IOException
     {
         if (dec == null) {
             writeNull();
@@ -519,14 +533,18 @@ public class ProtobufGenerator extends GeneratorBase
     
     @Override
     protected final void _verifyValueWrite(String typeMsg)
-        throws IOException, JsonGenerationException
+        throws IOException
     {
         _throwInternal();
     }
 
     @Override
     protected void _releaseBuffers() {
-        // nothing special to do...
+        byte[] b = _currentBuffer;
+        if (b != null) {
+            _ioContext.releaseWriteEncodingBuffer(b);
+            _currentBuffer = null;
+        }
     }
 
     /*

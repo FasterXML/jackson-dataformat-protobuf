@@ -3,18 +3,37 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 public class ProtobufField
 {
     /**
-     * Name of field in protoc definition
-     */
-    public final String _name;
-    
-    /**
      * Numeric id used in protobuf message
      */
-    public final int _id;
+    public final int id;
+    
+    /**
+     * Name of field in protoc definition
+     */
+    public final String name;
 
-    public ProtobufField(String name, int id)
+    public final FieldType type;
+
+    public final boolean required;
+
+    public final boolean repeated;
+
+    /**
+     * For main type of {@link FieldType#MESSAGE}, reference to actual
+     * message type definition.
+     */
+    public final ProtobufMessage messageType;
+    
+    public ProtobufField(int id, String n, FieldType ft,
+            boolean reqd, boolean reptd,
+            ProtobufMessage mtype)
     {
-        _name = name;
-        _id = id;
+        this.id = id;
+        name = n;
+        type = ft;
+        required = reqd;
+        repeated = reptd;
+        messageType = mtype;
     }
 }
+

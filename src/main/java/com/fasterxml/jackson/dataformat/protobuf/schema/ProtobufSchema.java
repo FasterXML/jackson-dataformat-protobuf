@@ -1,8 +1,8 @@
 package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import com.fasterxml.jackson.core.FormatSchema;
-import com.squareup.proto.MessageType;
-import com.squareup.proto.ProtoFile;
+import com.squareup.protoparser.MessageType;
+import com.squareup.protoparser.ProtoFile;
 
 public class ProtobufSchema implements FormatSchema
 {

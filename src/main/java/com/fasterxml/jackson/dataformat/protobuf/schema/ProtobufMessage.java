@@ -1,5 +1,8 @@
 package com.fasterxml.jackson.dataformat.protobuf.schema;
 
-public class ProtobufMessage {
-
+public class ProtobufMessage
+{
+    public ProtobufMessage() {
+        
+    }
 }
