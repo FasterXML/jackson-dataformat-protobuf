@@ -17,6 +17,8 @@ public class ProtobufMessage
         }
     }
 
+    public String getName() { return _name; }
+    
     public ProtobufField field(String name) {
         return _fields.get(name);
     }

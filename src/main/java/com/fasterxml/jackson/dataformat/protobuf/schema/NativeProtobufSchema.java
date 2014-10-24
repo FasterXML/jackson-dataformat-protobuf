@@ -14,42 +14,17 @@ import com.squareup.protoparser.Type;
  */
 public class NativeProtobufSchema
 {
-    protected final ProtoFile _native;
+    protected final String _name;
+    protected final List<Type> _nativeTypes;
 
-    protected final LinkedHashMap<String,MessageType> _nativeMessageTypes;
-
-    protected final Map<String,ProtobufEnum> _enums;
-    
-    protected NativeProtobufSchema(ProtoFile input, LinkedHashMap<String,MessageType> nativeMsgs,
-            Map<String,ProtobufEnum> enums)
+    protected NativeProtobufSchema(ProtoFile input)
     {
-        _native = input;
-        _nativeMessageTypes = nativeMsgs;
-        _enums = enums;
+        _name = input.getFileName();
+        _nativeTypes = input.getTypes();
     }
 
-    public static NativeProtobufSchema construct(ProtoFile input)
-    {
-        LinkedHashMap<String,MessageType> nativeMessages = new LinkedHashMap<String,MessageType>();
-        Map<String,ProtobufEnum> enumTypes = new HashMap<String,ProtobufEnum>();
-        
-        for (Type nt : input.getTypes()) {
-            if (nt instanceof MessageType) {
-                nativeMessages.put(nt.getName(), (MessageType) nt);
-            } else if (nt instanceof EnumType) {
-                enumTypes.put(nt.getName(), _constructEnum((EnumType) nt));
-            } // no other known types?
-        }
-        return new NativeProtobufSchema(input, nativeMessages, enumTypes);
-    }
-
-    protected static ProtobufEnum _constructEnum(EnumType nativeEnum)
-    {
-        final Map<String,Integer> valuesByName = new LinkedHashMap<String,Integer>();
-        for (EnumType.Value v : nativeEnum.getValues()) {
-            valuesByName.put(v.getName(), v.getTag());
-        }
-        return new ProtobufEnum(nativeEnum.getName(), valuesByName);
+    public static NativeProtobufSchema construct(ProtoFile input) {
+        return new NativeProtobufSchema(input);
     }
     
     /**
@@ -58,7 +33,7 @@ public class NativeProtobufSchema
      */
     public boolean hasMessageType(String messageTypeName)
     {
-        for (Type type : _native.getTypes()) {
+        for (Type type : _nativeTypes) {
             if (messageTypeName.equals(type.getName())) {
                 if (type instanceof MessageType) {
                     return true;
@@ -76,10 +51,10 @@ public class NativeProtobufSchema
     {
         MessageType msg = _messageType(messageTypeName);
         if (msg == null) {
-            throw new IllegalArgumentException("Protobuf schema definition (name '"+_native.getFileName()
+            throw new IllegalArgumentException("Protobuf schema definition (name '"+_name
                     +"') has no message type with name '"+messageTypeName+"'");
         }
-        return ProtobufSchema.construct(_native, msg, _nativeMessageTypes, _enums);
+        return new ProtobufSchema(TypeResolver.construct(_nativeTypes).resolve(msg));
     }
 
     /**
@@ -90,10 +65,10 @@ public class NativeProtobufSchema
     {
         MessageType msg = _firstMessageType();
         if (msg == null) {
-            throw new IllegalArgumentException("Protobuf schema definition (name '"+_native.getFileName()
+            throw new IllegalArgumentException("Protobuf schema definition (name '"+_name
                     +"') contains no message type definitions");
         }
-        return ProtobufSchema.construct(_native, msg, _nativeMessageTypes, _enums);
+        return new ProtobufSchema(TypeResolver.construct(_nativeTypes).resolve(msg));
     }
 
     /*
@@ -103,11 +78,21 @@ public class NativeProtobufSchema
      */
     
     protected MessageType _firstMessageType() {
-        Iterator<MessageType> it = _nativeMessageTypes.values().iterator();
-        return it.hasNext() ? it.next() : null;
+        for (Type type : _nativeTypes) {
+            if (type instanceof MessageType) {
+                return (MessageType) type;
+            }
+        }
+        return null;
     }
 
     protected MessageType _messageType(String name) {
-        return _nativeMessageTypes.get(name);
+        for (Type type : _nativeTypes) {
+            if ((type instanceof MessageType)
+                    && name.equals(type.getName())) {
+                return (MessageType) type;
+            }
+        }
+        return null;
     }
 }

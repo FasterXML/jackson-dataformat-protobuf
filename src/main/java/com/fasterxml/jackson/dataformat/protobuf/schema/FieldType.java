@@ -8,11 +8,12 @@ import java.util.Arrays;
  */
 public enum FieldType
 {
-    DOUBLE("double"),
-    FLOAT("float"),
-    VINT("int32", "int64"), // variable length, signed and unsigned
-    INT32("uint32", "sint32", "fixed32", "sfixed32"), // fixed length, signed and unsigned
-    INT64("uint64", "sint64", "fixed64", "sfixed64"), // fixed length, signed and unsigned
+    DOUBLE("double"), // fixed-length 64-bit double
+    FLOAT("float"), // fixed-length
+    VINT32("int32", "uint32", "sint32"), // variable length, intended as 32-bit
+    VINT64("int64", "uint64", "sint64"), // variable length, intended as 64-bit
+    INT32("fixed32", "sfixed32"), // fixed length, 32-bit int
+    INT64("fixed64", "sfixed64"), // fixed length, 64-bit int
     BOOLEAN("bool)"),
     STRING("string"),
     BYTES("bytes"), // byte array

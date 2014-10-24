@@ -4,32 +4,50 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.FormatSchema;
 import com.squareup.protoparser.MessageType;
+import com.squareup.protoparser.MessageType.Field;
 import com.squareup.protoparser.ProtoFile;
 
+/**
+ * A {@link FormatSchema} implementation for protobuf, bound to specific root-level
+ * {@link ProtobufMessage}, and useful for reading/writing protobuf content
+ * that encodes instance of that message.
+ */
 public class ProtobufSchema implements FormatSchema
 {
     public final static String FORMAT_NAME_PROTOBUF = "protobuf";
 
-    protected ProtobufSchema() {
+    protected final ProtobufMessage _rootType;
+
+    /*
+    /**********************************************************
+    /* Construction
+    /**********************************************************
+     */
+    
+    public ProtobufSchema(ProtobufMessage rootType) {
+        _rootType = rootType;
     }
 
-    public static ProtobufSchema construct(ProtoFile nativeSchema, MessageType rootType,
-            Map<String,MessageType> nativeMessageTypes,            
-            Map<String,ProtobufEnum> enums)
-    {
-        Map<String,ProtobufMessage> messageTypes = new HashMap<String,ProtobufMessage>();
-
-        /*
-        ProtobufMessage msg = _buildMessage(nativeSchema, )
-        */
-        
-        // !!! TODO
-        return new ProtobufSchema();
-        
+    /*
+    /**********************************************************
+    /* API
+    /**********************************************************
+     */
+    
+    public ProtobufMessage getRootType() {
+        return _rootType;
     }
     
     @Override
     public String getSchemaType() {
         return FORMAT_NAME_PROTOBUF;
     }
+
+    /*
+    /**********************************************************
+    /* Internal methods
+    /**********************************************************
+     */
+
+
 }

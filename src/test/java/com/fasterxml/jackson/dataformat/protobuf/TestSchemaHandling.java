@@ -12,8 +12,13 @@ public class TestSchemaHandling extends ProtobufTestBase
                 +" required string query = 1;\n"
                 +" optional int32 page_number = 2;\n"
                 +" optional int32 result_per_page = 3;\n"
+                +" enum Corpus {\n"
+                +"   UNIVERSAL = 0;\n"
+                +"   WEB = 1;\n"
+                +" }\n"
+                +" optional Corpus corpus = 4 [default = UNIVERSAL];\n"
                 +"}\n"
-                ;
+        ;
 
         // First: with implicit first type:
         ProtobufSchema schema = ProtobufSchemaLoader.DEFAULT_INSTANCE.parse(SIMPLE_PROTOC);
@@ -24,5 +29,9 @@ public class TestSchemaHandling extends ProtobufTestBase
         assertNotNull(nat);
         assertNotNull(nat.forFirstType());
         assertNotNull(nat.forType("SearchRequest"));
+    }
+
+    public void testBigger() throws Exception
+    {
     }
 }
