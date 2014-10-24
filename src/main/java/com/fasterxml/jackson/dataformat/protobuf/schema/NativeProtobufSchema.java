@@ -2,6 +2,7 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import java.util.*;
 
+import com.squareup.protoparser.EnumType;
 import com.squareup.protoparser.MessageType;
 import com.squareup.protoparser.ProtoFile;
 import com.squareup.protoparser.Type;
@@ -14,20 +15,43 @@ import com.squareup.protoparser.Type;
 public class NativeProtobufSchema
 {
     protected final ProtoFile _native;
+
+    protected final LinkedHashMap<String,MessageType> _nativeMessageTypes;
+
+    protected final Map<String,ProtobufEnum> _enums;
     
-    protected NativeProtobufSchema(ProtoFile input) {
+    protected NativeProtobufSchema(ProtoFile input, LinkedHashMap<String,MessageType> nativeMsgs,
+            Map<String,ProtobufEnum> enums)
+    {
         _native = input;
+        _nativeMessageTypes = nativeMsgs;
+        _enums = enums;
     }
 
     public static NativeProtobufSchema construct(ProtoFile input)
     {
-        Map<String,ProtobufMessage> messageTypes = new HashMap<String,ProtobufMessage>();
+        LinkedHashMap<String,MessageType> nativeMessages = new LinkedHashMap<String,MessageType>();
         Map<String,ProtobufEnum> enumTypes = new HashMap<String,ProtobufEnum>();
         
-        
-        return new NativeProtobufSchema(input);
+        for (Type nt : input.getTypes()) {
+            if (nt instanceof MessageType) {
+                nativeMessages.put(nt.getName(), (MessageType) nt);
+            } else if (nt instanceof EnumType) {
+                enumTypes.put(nt.getName(), _constructEnum((EnumType) nt));
+            } // no other known types?
+        }
+        return new NativeProtobufSchema(input, nativeMessages, enumTypes);
     }
 
+    protected static ProtobufEnum _constructEnum(EnumType nativeEnum)
+    {
+        final Map<String,Integer> valuesByName = new LinkedHashMap<String,Integer>();
+        for (EnumType.Value v : nativeEnum.getValues()) {
+            valuesByName.put(v.getName(), v.getTag());
+        }
+        return new ProtobufEnum(nativeEnum.getName(), valuesByName);
+    }
+    
     /**
      * Method for checking whether specified message type is defined by
      * the native schema
@@ -55,7 +79,7 @@ public class NativeProtobufSchema
             throw new IllegalArgumentException("Protobuf schema definition (name '"+_native.getFileName()
                     +"') has no message type with name '"+messageTypeName+"'");
         }
-        return ProtobufSchema.construct(_native, msg);
+        return ProtobufSchema.construct(_native, msg, _nativeMessageTypes, _enums);
     }
 
     /**
@@ -69,7 +93,7 @@ public class NativeProtobufSchema
             throw new IllegalArgumentException("Protobuf schema definition (name '"+_native.getFileName()
                     +"') contains no message type definitions");
         }
-        return ProtobufSchema.construct(_native, msg);
+        return ProtobufSchema.construct(_native, msg, _nativeMessageTypes, _enums);
     }
 
     /*
@@ -78,25 +102,12 @@ public class NativeProtobufSchema
     /**********************************************************
      */
     
-    protected MessageType _firstMessageType()
-    {
-        for (Type type : _native.getTypes()) {
-            if (type instanceof MessageType) {
-                return (MessageType) type;
-            }
-        }
-        return null;
+    protected MessageType _firstMessageType() {
+        Iterator<MessageType> it = _nativeMessageTypes.values().iterator();
+        return it.hasNext() ? it.next() : null;
     }
 
-    protected MessageType _messageType(String name)
-    {
-        for (Type type : _native.getTypes()) {
-            if (name.equals(type.getName())) {
-                if (type instanceof MessageType) {
-                    return (MessageType) type;
-                }
-            }
-        }
-        return null;
+    protected MessageType _messageType(String name) {
+        return _nativeMessageTypes.get(name);
     }
 }

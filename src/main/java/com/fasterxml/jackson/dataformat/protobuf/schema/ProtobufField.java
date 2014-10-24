@@ -22,18 +22,27 @@ public class ProtobufField
      * For main type of {@link FieldType#MESSAGE}, reference to actual
      * message type definition.
      */
-    public final ProtobufMessage messageType;
+    protected ProtobufMessage messageType;
     
     public ProtobufField(int id, String n, FieldType ft,
-            boolean reqd, boolean reptd,
-            ProtobufMessage mtype)
+            boolean reqd, boolean reptd)
     {
         this.id = id;
         name = n;
         type = ft;
         required = reqd;
         repeated = reptd;
-        messageType = mtype;
+    }
+
+    public void assignMessageType(ProtobufMessage msgType) {
+        if (type != FieldType.MESSAGE) {
+            throw new IllegalStateException("Can not assign message type for non-message field '"+name+"'");
+        }
+        messageType = msgType;
+    }
+
+    public ProtobufMessage getMessageType() {
+        return messageType;
     }
 }
 
