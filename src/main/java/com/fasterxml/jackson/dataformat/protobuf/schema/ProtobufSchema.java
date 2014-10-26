@@ -1,11 +1,6 @@
 package com.fasterxml.jackson.dataformat.protobuf.schema;
 
-import java.util.*;
-
 import com.fasterxml.jackson.core.FormatSchema;
-import com.squareup.protoparser.MessageType;
-import com.squareup.protoparser.MessageType.Field;
-import com.squareup.protoparser.ProtoFile;
 
 /**
  * A {@link FormatSchema} implementation for protobuf, bound to specific root-level
