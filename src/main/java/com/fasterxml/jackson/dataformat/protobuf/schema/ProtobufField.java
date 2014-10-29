@@ -26,6 +26,8 @@ public class ProtobufField
 
     protected final ProtobufEnum enumType;
 
+    protected final boolean isObject;
+    
     public ProtobufField(Field nativeField, FieldType type) {
         this(nativeField, type, null, null);
     }
@@ -36,6 +38,10 @@ public class ProtobufField
 
     public ProtobufField(Field nativeField, ProtobufEnum et) {
         this(nativeField, FieldType.ENUM, null, et);
+    }
+
+    public static ProtobufField unknownField() {
+        return new ProtobufField(null, FieldType.MESSAGE, null, null);
     }
     
     protected ProtobufField(Field nativeField, FieldType type,
@@ -61,6 +67,7 @@ public class ProtobufField
         }
         packed = nativeField.isPacked();
         deprecated = nativeField.isDeprecated();
+        isObject = !repeated && (type == FieldType.MESSAGE);
     }
 
     public void assignMessageType(ProtobufMessage msgType) {
@@ -77,5 +84,12 @@ public class ProtobufField
     public ProtobufEnum getEnumType() {
         return enumType;
     }
-}
 
+    public boolean isObject() {
+        return isObject;
+    }
+
+    public boolean isArray() {
+        return repeated;
+    }
+}

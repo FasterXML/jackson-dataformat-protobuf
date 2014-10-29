@@ -17,9 +17,17 @@ public class ProtobufMessage
         }
     }
 
+    public static ProtobufMessage bogusMessage(String desc) {
+        return new ProtobufMessage(desc, Collections.<ProtobufField>emptyList());
+    }
+
     public String getName() { return _name; }
     
     public ProtobufField field(String name) {
         return _fields.get(name);
+    }
+
+    public String fieldsAsString() {
+        return _fields.keySet().toString();
     }
 }
