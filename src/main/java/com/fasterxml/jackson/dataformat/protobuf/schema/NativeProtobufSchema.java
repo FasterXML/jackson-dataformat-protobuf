@@ -2,10 +2,7 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import java.util.*;
 
-import com.squareup.protoparser.EnumType;
-import com.squareup.protoparser.MessageType;
-import com.squareup.protoparser.ProtoFile;
-import com.squareup.protoparser.Type;
+import com.squareup.protoparser.*;
 
 /**
  * Helper class used for wrapping a "raw" protobuf schema; and used

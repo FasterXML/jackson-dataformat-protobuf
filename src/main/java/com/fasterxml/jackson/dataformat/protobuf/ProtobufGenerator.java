@@ -13,6 +13,7 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.FieldType;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufField;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
+import com.fasterxml.jackson.dataformat.protobuf.schema.WireType;
 
 public class ProtobufGenerator extends GeneratorBase
 {
@@ -595,15 +596,52 @@ public class ProtobufGenerator extends GeneratorBase
         // protobuf has no way of writing null does it?
         // ...but should we try to add placeholders in arrays?
     }
-
+    
     @Override
-    public void writeNumber(int i) throws IOException
+    public void writeNumber(int v) throws IOException
     {
+        final int type = _currField.wireType;
+
+        if (type == WireType.VINT) { // first, common case
+            if (_currField.usesZigZag) {
+                v = ProtobufUtil.zigzagEncode(v);
+            }
+            _writeVInt(v);
+            return;
+        }
+        if (type == WireType.FIXED_32BIT) {
+            _writeInt32(v);
+            return;
+        }
+        if (type == WireType.FIXED_64BIT) {
+            _writeInt64(v);
+            return;
+        }
+        _reportError("Can not write `int` value for for '"+_currField.name+"' (type "+_currField.type+")");
     }
 
     @Override
-    public void writeNumber(long l) throws IOException
+    public void writeNumber(long v) throws IOException
     {
+        final int type = _currField.wireType;
+
+        if (type == WireType.VINT) { // first, common case
+            if (_currField.usesZigZag) {
+                v = ProtobufUtil.zigzagEncode(v);
+            }
+            // is this ok?
+            _writeVLong(v);
+            return;
+        }
+        if (type == WireType.FIXED_32BIT) {
+            _writeInt32((int) v);
+            return;
+        }
+        if (type == WireType.FIXED_64BIT) {
+            _writeInt64(v);
+            return;
+        }
+        _reportError("Can not write `int` value for for '"+_currField.name+"' (type "+_currField.type+")");
     }
 
     @Override
@@ -671,10 +709,109 @@ public class ProtobufGenerator extends GeneratorBase
 
     /*
     /**********************************************************
+    /* Internal scalar value writes
+    /**********************************************************
+     */
+
+    private final void _writeVInt(int v) throws IOException
+    {
+        // Max tag length 5 bytes, then at most 5 bytes
+        _ensureRoom(10);
+        int ptr = _writeTag(WireType.VINT, _currentPtr);
+        if (v < 0) {
+            _writeVIntMax(v, ptr);
+            return;
+        }
+
+        final byte[] buf = _currentBuffer;
+        if (v <= 0x7F) {
+            buf[ptr++] = (byte) v;
+        } else {
+            buf[ptr++] = (byte) (0x80 + (v & 0x7F));
+            v >>= 7;
+            if (v <= 0x7F) {
+                buf[ptr++] = (byte) v;
+            } else {
+                buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+                v >>= 7;
+                if (v <= 0x7F) {
+                    buf[ptr++] = (byte) v;
+                } else {
+                    buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+                    v >>= 7;
+                    if (v <= 0x7F) {
+                        buf[ptr++] = (byte) v;
+                    } else {
+                        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+                        v >>= 7;
+                        // and now must have at most 3 bits (since negatives were offlined)
+                        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+                    }
+                }
+            }
+        }
+        _currentPtr = ptr;
+    }
+
+    // off-lined version for 5-byte VInts
+    private final void _writeVIntMax(int v, int ptr) throws IOException
+    {
+        final byte[] buf = _currentBuffer;
+        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+        v >>>= 7;
+        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+        v >>= 7;
+        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+        v >>= 7;
+        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+        v >>= 7;
+        buf[ptr++] = (byte) v;
+    }
+    
+    private final void _writeVLong(long v) throws IOException
+    {
+        
+    }
+
+    private final void _writeInt32(int v) throws IOException
+    {
+        
+    }
+    
+    private final void _writeInt64(long v) throws IOException
+    {
+        
+    }
+
+    private final int _writeTag(int ptr, int wireType)
+    {
+        if (!_currField.packed) {
+            final byte[] buf = _currentBuffer;
+            int tag = (_currField.id << 3) | wireType;
+            if (tag <= 0x7F) {
+                buf[ptr++] = (byte) tag;
+            } else {
+                do {
+                    buf[ptr++] = (byte) ((tag & 0x7F) + 0x80);
+                    tag >>= 7;
+                } while (tag > 0x7F);
+                buf[ptr++] = (byte) tag;
+            }
+        }
+        return ptr;
+    }
+    
+    /*
+    /**********************************************************
     /* Helper methods
     /**********************************************************
      */
 
+    protected final void _ensureRoom(int needed) throws IOException
+    {
+        // !!! TBI
+    }
+    
     protected void _complete() throws IOException
     {
         _complete = true;

@@ -16,8 +16,14 @@ public class ProtobufField
 
     public final FieldType type;
 
-    public final boolean required, repeated, packed, deprecated;
+    /**
+     * 3-bit id used on 
+     */
+    public final int wireType;
     
+    public final boolean required, repeated, packed, deprecated;
+    public final boolean usesZigZag;
+
     /**
      * For main type of {@link FieldType#MESSAGE}, reference to actual
      * message type definition.
@@ -48,6 +54,8 @@ public class ProtobufField
             ProtobufMessage msg, ProtobufEnum et)
     {
         this.type = type;
+        wireType = type.getWireType();
+        usesZigZag = type.usesZigZag();
         this.id = nativeField.getTag();
         name = nativeField.getName();
         enumType = et;
