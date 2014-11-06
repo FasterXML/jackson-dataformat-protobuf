@@ -5,9 +5,9 @@ import com.squareup.protoparser.MessageType.Field;
 public class ProtobufField
 {
     /**
-     * Numeric id ("tag") used in protobuf message
+     * Combination of numeric tag and 3-bit wire type.
      */
-    public final int id;
+    public final int typedTag;
     
     /**
      * Name of field in protoc definition
@@ -17,7 +17,7 @@ public class ProtobufField
     public final FieldType type;
 
     /**
-     * 3-bit id used on 
+     * 3-bit id used on determining details of how values are serialized.
      */
     public final int wireType;
     
@@ -56,7 +56,7 @@ public class ProtobufField
         this.type = type;
         wireType = type.getWireType();
         usesZigZag = type.usesZigZag();
-        this.id = nativeField.getTag();
+        typedTag = (nativeField.getTag() << 3) + wireType;
         name = nativeField.getName();
         enumType = et;
         messageType = msg;

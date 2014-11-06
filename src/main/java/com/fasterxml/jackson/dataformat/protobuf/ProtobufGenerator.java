@@ -582,10 +582,23 @@ public class ProtobufGenerator extends GeneratorBase
     public void writeBoolean(boolean state) throws IOException
     {
         _verifyValueWrite();
-        FieldType t = _currField.type;
-        if (t == FieldType.BOOLEAN) {
-            
+
+        // same as 'writeNumber(int)', really
+        final int type = _currField.wireType;
+
+        if (type == WireType.VINT) { // first, common case
+            _writeVInt(_currField.usesZigZag ? 2 : 1);
+            return;
         }
+        if (type == WireType.FIXED_32BIT) {
+            _writeInt32(1);
+            return;
+        }
+        if (type == WireType.FIXED_64BIT) {
+            _writeInt64(1L);
+            return;
+        }
+        _reportError("Can not write `boolean` value for for '"+_currField.name+"' (type "+_currField.type+")");
     }
 
     @Override
@@ -600,6 +613,8 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public void writeNumber(int v) throws IOException
     {
+        _verifyValueWrite();
+
         final int type = _currField.wireType;
 
         if (type == WireType.VINT) { // first, common case
@@ -623,6 +638,7 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public void writeNumber(long v) throws IOException
     {
+        _verifyValueWrite();
         final int type = _currField.wireType;
 
         if (type == WireType.VINT) { // first, common case
@@ -641,7 +657,7 @@ public class ProtobufGenerator extends GeneratorBase
             _writeInt64(v);
             return;
         }
-        _reportError("Can not write `int` value for for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportError("Can not write `long` value for for '"+_currField.name+"' (type "+_currField.type+")");
     }
 
     @Override
@@ -658,11 +674,45 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public void writeNumber(double d) throws IOException
     {
+        _verifyValueWrite();
+        final int type = _currField.wireType;
+
+        if (type == WireType.FIXED_32BIT) {
+            // should we coerce like this?
+            float f = (float) d;
+            _writeInt32(Float.floatToRawIntBits(f));
+            return;
+        }
+        if (type == WireType.FIXED_64BIT) {
+            _writeInt64(Double.doubleToLongBits(d));
+            return;
+        }
+        if (_currField.type == FieldType.STRING) {
+            _writeString(String.valueOf(d));
+            return;
+        }
+        _reportError("Can not write `double` value for for '"+_currField.name+"' (type "+_currField.type+")");
     }    
 
     @Override
     public void writeNumber(float f) throws IOException
     {
+        _verifyValueWrite();
+        final int type = _currField.wireType;
+
+        if (type == WireType.FIXED_32BIT) {
+            _writeInt32(Float.floatToRawIntBits(f));
+            return;
+        }
+        if (type == WireType.FIXED_64BIT) {
+            _writeInt64(Double.doubleToLongBits((double) f));
+            return;
+        }
+        if (_currField.type == FieldType.STRING) {
+            _writeString(String.valueOf(f));
+            return;
+        }
+        _reportError("Can not write `float` value for for '"+_currField.name+"' (type "+_currField.type+")");
     }
 
     @Override
@@ -709,17 +759,28 @@ public class ProtobufGenerator extends GeneratorBase
 
     /*
     /**********************************************************
-    /* Internal scalar value writes
+    /* Internal text writing
     /**********************************************************
      */
 
+    protected void _writeString(String v) throws IOException
+    {
+        // !!!
+    }
+
+    /*
+    /**********************************************************
+    /* Internal scalar value writes
+    /**********************************************************
+     */
+    
     private final void _writeVInt(int v) throws IOException
     {
         // Max tag length 5 bytes, then at most 5 bytes
         _ensureRoom(10);
         int ptr = _writeTag(WireType.VINT, _currentPtr);
         if (v < 0) {
-            _writeVIntMax(v, ptr);
+            _currentPtr = _writeVIntMax(v, ptr);
             return;
         }
 
@@ -754,7 +815,7 @@ public class ProtobufGenerator extends GeneratorBase
     }
 
     // off-lined version for 5-byte VInts
-    private final void _writeVIntMax(int v, int ptr) throws IOException
+    private final int _writeVIntMax(int v, int ptr) throws IOException
     {
         final byte[] buf = _currentBuffer;
         buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
@@ -766,31 +827,147 @@ public class ProtobufGenerator extends GeneratorBase
         buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
         v >>= 7;
         buf[ptr++] = (byte) v;
+        return ptr;
     }
     
     private final void _writeVLong(long v) throws IOException
     {
-        
+        // Max tag length 5 bytes, then at most 5 bytes
+        _ensureRoom(10);
+        int ptr = _writeTag(WireType.VINT, _currentPtr);
+        if (v < 0L) {
+            _currentPtr = _writeVLongMax(v, ptr);
+            return;
+        }
+
+        // first, 4 bytes or less?
+        if (v <= 0x0FFFFFFF) {
+            int i = (int) v;
+            final byte[] buf = _currentBuffer;
+
+            if (v <= 0x7F) {
+                buf[ptr++] = (byte) v;
+            } else {
+                do {
+                    buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+                    i >>= 7;
+                } while (i > 0x7F);
+                buf[ptr++] = (byte) i;
+            }
+            _currentPtr = ptr;
+            return;
+        }
+        // nope, so we know 28 LSBs are to be written first
+        int i = (int) v;
+        final byte[] buf = _currentBuffer;
+
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+
+        v >>>= 28;
+
+        // still got 36 bits, chop of LSB
+        if (v <= 0x7F) {
+            buf[ptr++] = (byte) v;
+        } else {
+            buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+            // but then can switch to int for remaining max 28 bits
+            i = (int) (v >> 7);
+            do {
+                buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+                i >>= 7;
+            } while (i > 0x7F);
+            buf[ptr++] = (byte) i;
+        }
+        _currentPtr = ptr;
     }
 
-    private final void _writeInt32(int v) throws IOException
+    // off-lined version for 10-byte VLongs
+    private final int _writeVLongMax(long v, int ptr) throws IOException
     {
-        
+        final byte[] buf = _currentBuffer;
+        // first, LSB 28 bits
+        int i = (int) v;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+
+        // then next 28 (for 56 so far)
+        i = (int) (v >>> 28);
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+
+        // and last 2 (for 7 bits, and 1 bit, respectively)
+        i = (int) (v >>> 56);
+        buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
+        i >>= 7;
+        buf[ptr++] = (byte) i;
+        return ptr;
     }
     
-    private final void _writeInt64(long v) throws IOException
+    private final void _writeInt32(int v) throws IOException
     {
+        final byte[] buf = _currentBuffer;
+        int ptr = _currentPtr;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        _currentPtr =  ptr;
+    }
+    
+    private final void _writeInt64(long v64) throws IOException
+    {
+        final byte[] buf = _currentBuffer;
+        int ptr = _currentPtr;
+
+        int v = (int) v64;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+
+        v = (int) (v64 >> 32);
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
+        v >>= 8;
+        buf[ptr++] = (byte) v;
         
+        _currentPtr =  ptr;
     }
 
     private final int _writeTag(int ptr, int wireType)
     {
         if (!_currField.packed) {
             final byte[] buf = _currentBuffer;
-            int tag = (_currField.id << 3) | wireType;
+            int tag = _currField.typedTag;
             if (tag <= 0x7F) {
                 buf[ptr++] = (byte) tag;
             } else {
+                // Note: caller must have ensured space for at least 5 bytes
                 do {
                     buf[ptr++] = (byte) ((tag & 0x7F) + 0x80);
                     tag >>= 7;
