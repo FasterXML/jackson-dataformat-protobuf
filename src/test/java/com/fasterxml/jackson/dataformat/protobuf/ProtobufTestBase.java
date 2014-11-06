@@ -1,4 +1,5 @@
 package com.fasterxml.jackson.dataformat.protobuf;
+
 import java.util.Arrays;
 
 import com.fasterxml.jackson.core.*;

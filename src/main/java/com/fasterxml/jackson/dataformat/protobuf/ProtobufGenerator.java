@@ -84,8 +84,6 @@ public class ProtobufGenerator extends GeneratorBase
      */
     protected final static ProtobufMessage UNKNOWN_MESSAGE = ProtobufMessage.bogusMessage("<unknown>");
 
-    protected final static ProtobufMessage ROOT_MESSAGE = ProtobufMessage.bogusMessage("<root>");
-    
     /*
     /**********************************************************
     /* Configuration
@@ -113,7 +111,7 @@ public class ProtobufGenerator extends GeneratorBase
      * Reference to the root context since that is needed for serialization
      */
     protected ProtobufWriteContext _rootContext;
-
+    
     protected boolean _inObject;
 
     /**
@@ -132,7 +130,7 @@ public class ProtobufGenerator extends GeneratorBase
      * Type of protobuf message that is currently being output: usually
      * matches write context, but for arrays may indicate "parent" of array.
      */
-    protected ProtobufMessage _currentMessage = ROOT_MESSAGE;
+    protected ProtobufMessage _currentMessage;
     
     /**
      * Field to be output next; set when {@link JsonToken#FIELD_NAME} is written,
@@ -151,6 +149,11 @@ public class ProtobufGenerator extends GeneratorBase
      */
     final protected OutputStream _output;
 
+    /**
+     * Object used In cases where we need to buffer content to calculate length-prefix.
+     */
+    protected ByteAccumulator _buffered;
+    
     /**
      * Current context, in form we can use it.
      */
@@ -279,9 +282,6 @@ public class ProtobufGenerator extends GeneratorBase
         if (!_inObject) {
             _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
         }
-        if (_currField != null) {
-            _reportError("Can not write field name: expecting value (for field '"+_currField.name+"'");
-        }
         ProtobufField f = _currentMessage.field(id);
         if (f == null) {
             // May be ok, if we have said so
@@ -336,6 +336,16 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public final void flush() throws IOException
     {
+        // can only flush if we do not need accumulation for length prefixes
+        if (_buffered == null) {
+            int start = _currentStart;
+            int len = _currentPtr - start;
+            if (len > 0) {
+                _currentStart = 0;
+                _currentPtr = 0;
+                _output.write(_currentBuffer, start, len);
+            }
+        }
         _output.flush();
     }
     
@@ -422,19 +432,26 @@ public class ProtobufGenerator extends GeneratorBase
     public final void writeStartObject() throws IOException
     {
         if (_currField == null) {
-            _reportError("Can not write START_OBJECT without field (message type "+_currentMessage.getName()+")");
-        }
-        // but also, field value must be Message if so
-        if (!_currField.isObject()) {
-            _reportError("Can not write START_OBJECT: type of field '"+_currField.name+"' not Message but: "+_currField.type);
+            // root?
+            if (!_pbContext.inRoot()) {
+                _reportError("Can not write START_OBJECT without field (message type "+_currentMessage.getName()+")");
+            }
+            _currentMessage = _schema.getRootType();
+        } else {
+            // but also, field value must be Message if so
+            if (!_currField.isObject()) {
+                _reportError("Can not write START_OBJECT: type of field '"+_currField.name+"' not Message but: "+_currField.type);
+            }
+            _currentMessage = _currField.getMessageType();
         }
         
         if (_inObject) {
-            _pbContext = _pbContext.createChildObjectContext(_currField.getMessageType());
+            _pbContext = _pbContext.createChildObjectContext(_currentMessage);
             _currField = null;
         } else { // must be array, then
-            _pbContext = _pbContext.createChildObjectContext(_currField.getMessageType());
+            _pbContext = _pbContext.createChildObjectContext(_currentMessage);
             // but do NOT clear next field here
+            _inObject = true;
         }
         // even if within array, object fields use tags
         _writeTag = true; 
@@ -446,20 +463,21 @@ public class ProtobufGenerator extends GeneratorBase
         if (!_inObject) {
             _reportError("Current context not an object but "+_pbContext.getTypeDesc());
         }
-        if (_currField != null) {
-            _reportError("Can not write END_OBJECT after writing FIELD_NAME ('"+_currField.name+"') but not value");
-        }
         _pbContext = _pbContext.getParent();
-        if (_pbContext.inRoot() && !_complete) {
-            _complete();
+        if (_pbContext.inRoot()) {
+            if (!_complete) {
+                _complete();
+            }
+        } else {
+            _currentMessage = _pbContext.getMessageType();
         }
         _currField = _pbContext.getField();
         // possible that we might be within array, which might be packed:
-        boolean inObj = _pbContext.inArray();
+        boolean inObj = _pbContext.inObject();
         _inObject = inObj;
-        _writeTag = inObj || !_currField.packed;
+        _writeTag = inObj || !_pbContext.inArray() || !_currField.packed;
     }
-    
+
     /*
     /**********************************************************
     /* Output method implementations, textual
@@ -766,6 +784,7 @@ public class ProtobufGenerator extends GeneratorBase
     protected void _writeString(String v) throws IOException
     {
         // !!!
+        throw new UnsupportedOperationException();
     }
 
     /*
@@ -986,16 +1005,55 @@ public class ProtobufGenerator extends GeneratorBase
 
     protected final void _ensureRoom(int needed) throws IOException
     {
-        // !!! TBI
+        // common case: we got it already
+        if ((_currentPtr + needed) < _currentEnd) {
+            return;
+        }
+        // if not, either simple (flush), or 
+        final int start = _currentStart;
+        final int currLen = _currentPtr - start;
+
+        _currentStart = 0;
+        _currentPtr = 0;
+        
+        ByteAccumulator acc = _buffered;
+        if (acc == null) {
+            // without accumulation, we know buffer is free for reuse
+            if (currLen > 0) {
+                _output.write(_currentBuffer, start, currLen);
+            }
+            return;
+        }
+        // but with buffered, need to append, allocate new buffer (since old
+        // almost certainly contains buffered data)
+        if (currLen > 0) {
+            acc.append(_currentBuffer, start, currLen);
+        }
+        _currentBuffer = ProtobufUtil.allocSecondary(_currentBuffer);
     }
     
     protected void _complete() throws IOException
     {
         _complete = true;
-        /*
-        BinaryEncoder encoder = AvroSchema.encoder(_output);
-        _rootContext.complete(encoder);
-        encoder.flush();
-        */
+        final int start = _currentStart;
+        final int currLen = _currentPtr - start;
+        _currentPtr = start;
+
+        ByteAccumulator acc = _buffered;
+        if (acc == null) {
+            if (currLen > 0) {
+                _output.write(_currentBuffer, start, currLen);
+                _currentStart = 0;
+                _currentPtr = 0;
+            }
+        } else {
+            if (currLen > 0) {
+                acc.append(_currentBuffer, start, currLen);
+            }
+            do {
+                acc = acc.finish(_output);
+            } while (acc != null);
+            _buffered = null;
+        }
     }
 }

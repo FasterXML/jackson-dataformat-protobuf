@@ -77,6 +77,10 @@ public class ProtobufWriteContext
         return _field;
     }
 
+    public ProtobufMessage getMessageType() {
+        return _message;
+    }
+    
     public StringBuilder appendDesc(StringBuilder sb) {
         if (_parent != null) {
             sb = _parent.appendDesc(sb);

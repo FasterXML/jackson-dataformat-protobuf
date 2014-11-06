@@ -56,25 +56,32 @@ public class ProtobufField
         this.type = type;
         wireType = type.getWireType();
         usesZigZag = type.usesZigZag();
-        typedTag = (nativeField.getTag() << 3) + wireType;
-        name = nativeField.getName();
         enumType = et;
         messageType = msg;
-        switch (nativeField.getLabel()) {
-        case REPEATED:
-            required = false;
-            repeated = true;
-            break;
-        case REQUIRED:
-            required = true;
-            repeated = false;
-            break;
-        default:
-            required = repeated = false;
-            break;
+
+        if (nativeField == null) { // for "unknown" field
+            typedTag = 0;
+            repeated = required = deprecated = packed = false;
+            name = "UNKNOWN";
+        } else {
+            typedTag = (nativeField.getTag() << 3) + wireType;
+            name = nativeField.getName();
+            switch (nativeField.getLabel()) {
+            case REPEATED:
+                required = false;
+                repeated = true;
+                break;
+            case REQUIRED:
+                required = true;
+                repeated = false;
+                break;
+            default:
+                required = repeated = false;
+                break;
+            }
+            packed = nativeField.isPacked();
+            deprecated = nativeField.isDeprecated();
         }
-        packed = nativeField.isPacked();
-        deprecated = nativeField.isDeprecated();
         isObject = !repeated && (type == FieldType.MESSAGE);
     }
 
