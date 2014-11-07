@@ -21,8 +21,12 @@ public class ProtobufSchemaLoader
     private final static Charset UTF8 = Charset.forName("UTF-8");
 
     public final static String DEFAULT_SCHEMA_NAME = "Unnamed-protobuf-schema";
-    
-    public final static ProtobufSchemaLoader DEFAULT_INSTANCE = new ProtobufSchemaLoader();
+
+    /**
+     * Standard loader instance that is usually used for loading protoc
+     * schemas.
+     */
+    public final static ProtobufSchemaLoader std = new ProtobufSchemaLoader();
     
     public ProtobufSchemaLoader() { }
 

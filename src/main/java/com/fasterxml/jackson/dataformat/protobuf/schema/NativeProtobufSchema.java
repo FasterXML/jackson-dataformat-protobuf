@@ -14,6 +14,8 @@ public class NativeProtobufSchema
     protected final String _name;
     protected final List<Type> _nativeTypes;
 
+    protected volatile String[] _messageNames;
+    
     protected NativeProtobufSchema(ProtoFile input)
     {
         _name = input.getFileName();
@@ -49,9 +51,10 @@ public class NativeProtobufSchema
         MessageType msg = _messageType(messageTypeName);
         if (msg == null) {
             throw new IllegalArgumentException("Protobuf schema definition (name '"+_name
-                    +"') has no message type with name '"+messageTypeName+"'");
+                    +"') has no message type with name '"+messageTypeName+"': known types: "
+                    +getMessageNames());
         }
-        return new ProtobufSchema(TypeResolver.construct(_nativeTypes).resolve(msg));
+        return new ProtobufSchema(this, TypeResolver.construct(_nativeTypes).resolve(msg));
     }
 
     /**
@@ -65,7 +68,14 @@ public class NativeProtobufSchema
             throw new IllegalArgumentException("Protobuf schema definition (name '"+_name
                     +"') contains no message type definitions");
         }
-        return new ProtobufSchema(TypeResolver.construct(_nativeTypes).resolve(msg));
+        return new ProtobufSchema(this, TypeResolver.construct(_nativeTypes).resolve(msg));
+    }
+
+    public List<String> getMessageNames() {
+        if (_messageNames == null) {
+            _messageNames = _getMessageNames();
+        }
+        return Arrays.asList(_messageNames);
     }
 
     /*
@@ -91,5 +101,15 @@ public class NativeProtobufSchema
             }
         }
         return null;
+    }
+
+    private String[] _getMessageNames() {
+        ArrayList<String> names = new ArrayList<String>();
+        for (Type type : _nativeTypes) {
+            if (type instanceof MessageType) {
+                names.add(type.getName());
+            }
+        }
+        return names.toArray(new String[names.size()]);
     }
 }

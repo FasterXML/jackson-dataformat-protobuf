@@ -118,7 +118,7 @@ public class TypeResolver
                 // Ok, we are out of options here...
                 StringBuilder enumStr = _knownEnums(new StringBuilder());
                 StringBuilder msgStr = _knownMsgs(new StringBuilder());
-                throw new IllegalArgumentException("Unknown protobuf field type '"+f.getType()
+                throw new IllegalArgumentException("Unknown protobuf field type '"+typeStr
                         +"' for field '"+f.getName()+"' of MessageType '"+rawType.getName()
                         +"' (known enum types: "+enumStr+"; known message types: "+msgStr+")");
             }
