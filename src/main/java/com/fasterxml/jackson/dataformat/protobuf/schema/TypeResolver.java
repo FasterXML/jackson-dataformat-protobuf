@@ -85,70 +85,55 @@ public class TypeResolver
                 ._resolve(rawType);
     }
         
-    public ProtobufMessage _resolve(MessageType rawType)
+    protected ProtobufMessage _resolve(MessageType rawType)
     {
-        List<ProtobufField> fields = new ArrayList<ProtobufField>();
-        List<Unresolved> unresolved = null;
-
+        // Important: add type itself as (being) resolved, to allow for self-refs:
+        Map<String,ProtobufField> fields = new LinkedHashMap<String,ProtobufField>();
+        ProtobufMessage message = new ProtobufMessage(rawType.getName(), fields);
+        if (_resolvedMessageTypes.isEmpty()) {
+            _resolvedMessageTypes = new HashMap<String,ProtobufMessage>();
+        }
+        _resolvedMessageTypes.put(rawType.getName(), message);
+        
+        // and then resolve fields
         for (Field f : rawType.getFields()) {
             String typeStr = f.getType();
             // First: could it be we have a simple scalar type
             FieldType type = FieldTypes.findType(typeStr);
             if (type != null) { // simple type
-                fields.add(new ProtobufField(f, type));
+                fields.put(f.getName(), new ProtobufField(f, type));
                 continue;
             }
             // If not, a resolved local definition?
             ProtobufField resolvedF = _findLocalResolved(f, typeStr);
             if (resolvedF != null) {
-                fields.add(resolvedF);
+                fields.put(f.getName(), resolvedF);
                 continue;
             }
             // or, barring that local but as of yet unresolved message?
             MessageType nativeMt = _nativeMessageTypes.get(typeStr);
-            if (nativeMt == null) {
-                // If not, perhaps parent might have an answer?
-                if (_parent != null) {
-                    ProtobufField f2 = _parent._findAnyResolved(f, typeStr);
-                    if (f2 != null) {
-                        fields.add(f2);
-                        continue;
-                    }
-                }
-                // Ok, we are out of options here...
-                StringBuilder enumStr = _knownEnums(new StringBuilder());
-                StringBuilder msgStr = _knownMsgs(new StringBuilder());
-                throw new IllegalArgumentException("Unknown protobuf field type '"+typeStr
-                        +"' for field '"+f.getName()+"' of MessageType '"+rawType.getName()
-                        +"' (known enum types: "+enumStr+"; known message types: "+msgStr+")");
+            if (nativeMt != null) {
+                fields.put(f.getName(), new ProtobufField(f,
+                        TypeResolver.construct(this, nativeMt.getNestedTypes())._resolve(nativeMt)));
+                continue;
             }
-            ProtobufField pf = new ProtobufField(f, FieldType.MESSAGE);
-            fields.add(pf);
-            if (unresolved == null) {
-                unresolved = new ArrayList<Unresolved>();
+            // If not, perhaps parent might have an answer?
+            resolvedF = _parent._findAnyResolved(f, typeStr);
+            if (resolvedF != null) {
+                fields.put(f.getName(), resolvedF);
+                continue;
             }
-            unresolved.add(new Unresolved(pf, nativeMt));
+            // Ok, we are out of options here...
+            StringBuilder enumStr = _knownEnums(new StringBuilder());
+            StringBuilder msgStr = _knownMsgs(new StringBuilder());
+            throw new IllegalArgumentException("Unknown protobuf field type '"+typeStr
+                    +"' for field '"+f.getName()+"' of MessageType '"+rawType.getName()
+                    +"' (known enum types: "+enumStr+"; known message types: "+msgStr+")");
         }
-        ProtobufMessage resolved = new ProtobufMessage(rawType.getName(), fields);
-        if (_resolvedMessageTypes.isEmpty()) {
-            _resolvedMessageTypes = new HashMap<String,ProtobufMessage>();
-        }
-        _resolvedMessageTypes.put(rawType.getName(), resolved);
-
-        // and then resolve dependencies for remaining fields
-        if (unresolved != null) {
-            for (Unresolved u : unresolved) {
-                ProtobufField f = u.field;
-                if (f.type != FieldType.MESSAGE || (f.getMessageType() != null)) {
-                    continue;
-                }
-                f.assignMessageType(resolve(u.nativeType));
-            }
-        }
-        return resolved;
+        return message;
     }    
 
-    protected ProtobufMessage _findResolvedMessage(String typeStr)
+    private ProtobufMessage _findResolvedMessage(String typeStr)
     {
         ProtobufMessage msg = _resolvedMessageTypes.get(typeStr);
         if ((msg == null) && (_parent !=null)) {
@@ -157,16 +142,23 @@ public class TypeResolver
         return msg;
     }
 
-    protected ProtobufField _findAnyResolved(Field nativeField, String typeStr)
+    private ProtobufField _findAnyResolved(Field nativeField, String typeStr)
     {
         ProtobufField f = _findLocalResolved(nativeField, typeStr);
-        if ((f == null) && (_parent != null)) {
-            return _parent._findAnyResolved(nativeField, typeStr);
+        if (f == null) {
+            MessageType nativeMt = _nativeMessageTypes.get(typeStr);
+            if (nativeMt != null) {
+                return new ProtobufField(nativeField,
+                        TypeResolver.construct(this, nativeMt.getNestedTypes())._resolve(nativeMt));
+            }
+            if (_parent != null) {
+                return _parent._findAnyResolved(nativeField, typeStr);
+            }
         }
         return f;
     }
 
-    protected StringBuilder _knownEnums(StringBuilder sb) {
+    private StringBuilder _knownEnums(StringBuilder sb) {
         if (_parent != null) {
             sb = _parent._knownEnums(sb);
         }
@@ -179,7 +171,7 @@ public class TypeResolver
         return sb;
     }
 
-    protected StringBuilder _knownMsgs(StringBuilder sb) {
+    private StringBuilder _knownMsgs(StringBuilder sb) {
         if (_parent != null) {
             sb = _parent._knownMsgs(sb);
         }
@@ -192,7 +184,7 @@ public class TypeResolver
         return sb;
     }
     
-    protected ProtobufField _findLocalResolved(Field nativeField, String typeStr)
+    private ProtobufField _findLocalResolved(Field nativeField, String typeStr)
     {
         ProtobufMessage msg = _resolvedMessageTypes.get(typeStr);
         if (msg != null) {
@@ -203,16 +195,5 @@ public class TypeResolver
             return new ProtobufField(nativeField, et);
         }
         return null;
-    }
-    
-    private final static class Unresolved
-    {
-        public final ProtobufField field;
-        public final MessageType nativeType;
-
-        public Unresolved(ProtobufField f, MessageType nt) {
-            field = f;
-            nativeType = nt;
-        }
     }
 }

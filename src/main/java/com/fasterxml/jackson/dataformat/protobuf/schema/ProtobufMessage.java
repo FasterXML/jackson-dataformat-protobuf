@@ -8,19 +8,18 @@ public class ProtobufMessage
 
     protected final Map<String,ProtobufField> _fields;
     
-    public ProtobufMessage(String name, List<ProtobufField> fields)
+    public ProtobufMessage(String name, Map<String,ProtobufField> fields)
     {
         _name = name;
-        _fields = new LinkedHashMap<String,ProtobufField>(fields.size());
-        for (ProtobufField f : fields) {
-            _fields.put(f.name, f);
-        }
+        _fields = fields;
     }
 
     public static ProtobufMessage bogusMessage(String desc) {
-        return new ProtobufMessage(desc, Collections.<ProtobufField>emptyList());
+        return new ProtobufMessage(desc, Collections.<String,ProtobufField>emptyMap());
     }
 
+    public int getFieldCount() { return _fields.size(); }
+    
     public String getName() { return _name; }
     
     public ProtobufField field(String name) {

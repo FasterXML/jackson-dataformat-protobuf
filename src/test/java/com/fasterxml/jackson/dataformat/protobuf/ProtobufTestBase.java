@@ -8,6 +8,37 @@ import junit.framework.TestCase;
 
 abstract class ProtobufTestBase extends TestCase
 {
+    final protected static String PROTOC_SEARCH_REQUEST = "message SearchRequest {\n"
+            +" required string query = 1;\n"
+            +" optional int32 page_number = 2;\n"
+            +" optional int32 result_per_page = 3;\n"
+            +" enum Corpus {\n"
+            +"   UNIVERSAL = 0;\n"
+            +"   WEB = 1;\n"
+            +" }\n"
+            +" optional Corpus corpus = 4 [default = UNIVERSAL];\n"
+            +"}\n"
+    ;
+    
+    final protected static String PROTOC_BOX =
+            "message Point {\n"
+            +" required int32 x = 1;\n"
+            +" required sint32 y = 2;\n"
+            +"}\n"            
+            +"message Box {\n"
+            +" required Point topLeft = 1;\n"
+            +" required Point bottomRight = 2;\n"
+            +"}\n"
+    ;
+
+    final protected static String PROTOC_NODE =
+            "message Node {\n"
+            +" required int32 id = 1;\n"
+            +" optional Node left = 2;\n"
+            +" optional Node right = 3;\n"
+            +"}\n"
+    ;
+
     /*
     /**********************************************************
     /* Additional assertion methods

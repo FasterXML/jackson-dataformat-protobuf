@@ -7,19 +7,6 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
 public class SimpleWriteTest extends ProtobufTestBase
 {
-    final String PROTOC_POINT = "message Point {\n"
-            +" required int32 x = 1;\n"
-            +" required sint32 y = 2;\n"
-            +"}\n"
-    ;
-
-    final String PROTOC_BOX = PROTOC_POINT
-            +"message Box {\n"
-            +" required Point topLeft = 1;\n"
-            +" required Point bottomRight = 2;\n"
-            +"}\n"
-    ;
-
     static class Point {
         public int x, y;
 
@@ -42,7 +29,7 @@ public class SimpleWriteTest extends ProtobufTestBase
 
     public void testWritePoint() throws Exception
     {
-        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT);
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
         final ObjectWriter w = MAPPER.writerWithType(Point.class)
                 .withSchema(schema);
         byte[] bytes = w.writeValueAsBytes(new Point(7, 2));
@@ -58,18 +45,20 @@ public class SimpleWriteTest extends ProtobufTestBase
 
     public void testWriteCoord() throws Exception
     {
-        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX);
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Box");
         schema = schema.withRootType("Box");
         final ObjectWriter w = MAPPER.writerWithType(Box.class)
                 .withSchema(schema);
-        byte[] bytes = w.writeValueAsBytes(new Box(5, 200, 500, 250));
+        byte[] bytes = w.writeValueAsBytes(new Box(0x3F, 0x3F, 0x3F, 0x3F));
         assertNotNull(bytes);
         
-        // 4 bytes: 1 byte tags, 1 byte values
-        assertEquals(4, bytes.length);
-        assertEquals(8, bytes[0]); // wire type 0 (3 LSB), id of 1 (-> 0x8)
-        assertEquals(7, bytes[1]); // VInt 7, no zig-zag
-        assertEquals(0x10, bytes[2]); // wire type 0 (3 LSB), id of 2 (-> 0x10)
-        assertEquals(4, bytes[3]); // VInt 2, but with zig-zag
+        // 11 bytes for 2 Points; 4 single-byte ids, 3 x 2-byte values, 1 x 1-byte value
+        // but then 2 x 2 bytes for tag, length
+        
+        for (int i = 0; i < bytes.length; ++i) {
+            System.err.println("#"+i+": 0x"+Integer.toHexString(bytes[i] & 0xFF));
+        }
+      
+        assertEquals(11, bytes.length);
     }
 }
