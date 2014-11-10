@@ -26,8 +26,8 @@ abstract class ProtobufTestBase extends TestCase
             +" required sint32 y = 2;\n"
             +"}\n"            
             +"message Box {\n"
-            +" required Point topLeft = 1;\n"
-            +" required Point bottomRight = 2;\n"
+            +" required Point topLeft = 3;\n"
+            +" required Point bottomRight = 5;\n"
             +"}\n"
     ;
 

@@ -161,8 +161,6 @@ public class ProtobufGenerator extends GeneratorBase
 
     protected byte[] _currentBuffer;
 
-    protected int _currentEnd;
-    
     protected int _currentStart;
     
     protected int _currentPtr;
@@ -400,13 +398,19 @@ public class ProtobufGenerator extends GeneratorBase
         if (!_currField.isArray()) {
             _reportError("Can not write START_ARRAY: field '"+_currField.name+"' not declared as 'repeated'");
         }
-        
-        // !!! TODO: packed vs unpacked?
 
-        // NOTE: do NOT clear _currField
+        // NOTE: do NOT clear _currField; needed for actual element type
         
         _pbContext = _pbContext.createChildArrayContext();
         _writeTag = !_currField.packed;
+
+        /* Unpacked vs package: if unpacked, nothing special is needed, since it
+         * is equivalent to just replicating same field N times.
+         * With packed, need length prefix, all that stuff, so need accumulator
+         */
+        if (!_writeTag) { // packed
+            _startBuffering(_currField.typedTag);
+        }
     }
     
     @Override
@@ -426,6 +430,10 @@ public class ProtobufGenerator extends GeneratorBase
         }
         // no arrays inside arrays, so parent can't be array and so:
         _writeTag = true; 
+        // but, did we just end up packed array?
+        if (_currField.packed) {
+            _finishBuffering();
+        }
     }
 
     @Override
@@ -437,12 +445,15 @@ public class ProtobufGenerator extends GeneratorBase
                 _reportError("Can not write START_OBJECT without field (message type "+_currentMessage.getName()+")");
             }
             _currentMessage = _schema.getRootType();
+            // note: no buffering on root
         } else {
             // but also, field value must be Message if so
             if (!_currField.isObject()) {
                 _reportError("Can not write START_OBJECT: type of field '"+_currField.name+"' not Message but: "+_currField.type);
             }
             _currentMessage = _currField.getMessageType();
+            // and we need to start buffering, or add more nesting
+            _startBuffering(_currField.typedTag);
         }
         
         if (_inObject) {
@@ -476,6 +487,9 @@ public class ProtobufGenerator extends GeneratorBase
         boolean inObj = _pbContext.inObject();
         _inObject = inObj;
         _writeTag = inObj || !_pbContext.inArray() || !_currField.packed;
+        if (_buffered != null) { // null for root
+            _finishBuffering();
+        }
     }
 
     /*
@@ -978,7 +992,7 @@ public class ProtobufGenerator extends GeneratorBase
         _currentPtr =  ptr;
     }
 
-    private final int _writeTag(int ptr, int wireType)
+    private final int _writeTag(int wireType, int ptr)
     {
         if (!_currField.packed) {
             final byte[] buf = _currentBuffer;
@@ -996,26 +1010,52 @@ public class ProtobufGenerator extends GeneratorBase
         }
         return ptr;
     }
-    
+
     /*
     /**********************************************************
     /* Helper methods
     /**********************************************************
      */
 
+    private final void _startBuffering(int typedTag) throws IOException
+    {
+        // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
+        _ensureRoom(20);
+        // and leave the gap of 10 bytes
+        _currentStart = _currentPtr = _currentPtr + 10;
+        _buffered = new ByteAccumulator(_buffered, typedTag);
+
+    }
+
+    private final void _finishBuffering() throws IOException
+    {
+        final int start = _currentStart;
+        final int currLen = _currentPtr - start;
+        
+        ByteAccumulator acc = _buffered;
+        acc = acc.finish(_output, _currentBuffer, start, currLen);
+        _buffered = acc;
+        if (acc == null) {
+            _currentStart = 0;
+            _currentPtr = 0;
+        } else {
+            _currentStart = _currentPtr;
+        }
+    }
+    
     protected final void _ensureRoom(int needed) throws IOException
     {
         // common case: we got it already
-        if ((_currentPtr + needed) < _currentEnd) {
+        if ((_currentPtr + needed) <= _currentBuffer.length) {
             return;
         }
         // if not, either simple (flush), or 
         final int start = _currentStart;
         final int currLen = _currentPtr - start;
-
+        
         _currentStart = 0;
         _currentPtr = 0;
-        
+
         ByteAccumulator acc = _buffered;
         if (acc == null) {
             // without accumulation, we know buffer is free for reuse
@@ -1031,7 +1071,7 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _currentBuffer = ProtobufUtil.allocSecondary(_currentBuffer);
     }
-    
+
     protected void _complete() throws IOException
     {
         _complete = true;
@@ -1047,10 +1087,8 @@ public class ProtobufGenerator extends GeneratorBase
                 _currentPtr = 0;
             }
         } else {
-            if (currLen > 0) {
-                acc.append(_currentBuffer, start, currLen);
-            }
-            do {
+            acc = acc.finish(_output, _currentBuffer, start, currLen);
+            while (acc != null) {
                 acc = acc.finish(_output);
             } while (acc != null);
             _buffered = null;
