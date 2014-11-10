@@ -82,7 +82,7 @@ public class ProtobufField
             packed = nativeField.isPacked();
             deprecated = nativeField.isDeprecated();
         }
-        isObject = !repeated && (type == FieldType.MESSAGE);
+        isObject = (type == FieldType.MESSAGE);
     }
 
     public void assignMessageType(ProtobufMessage msgType) {
@@ -106,5 +106,11 @@ public class ProtobufField
 
     public boolean isArray() {
         return repeated;
+    }
+
+    @Override
+    public String toString() // for debugging
+    {
+        return "Field '"+name+"', tag="+typedTag+", wireType="+wireType+", fieldType="+type;
     }
 }

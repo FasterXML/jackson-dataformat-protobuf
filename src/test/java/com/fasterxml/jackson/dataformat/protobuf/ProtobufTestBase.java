@@ -19,12 +19,15 @@ abstract class ProtobufTestBase extends TestCase
             +" optional Corpus corpus = 4 [default = UNIVERSAL];\n"
             +"}\n"
     ;
-    
-    final protected static String PROTOC_BOX =
+
+    final protected static String PROTOC_POINT =
             "message Point {\n"
             +" required int32 x = 1;\n"
             +" required sint32 y = 2;\n"
-            +"}\n"            
+            +"}\n";
+    
+    final protected static String PROTOC_BOX =
+            PROTOC_POINT
             +"message Box {\n"
             +" required Point topLeft = 3;\n"
             +" required Point bottomRight = 5;\n"

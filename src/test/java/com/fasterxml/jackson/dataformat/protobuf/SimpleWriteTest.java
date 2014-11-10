@@ -34,12 +34,27 @@ public class SimpleWriteTest extends ProtobufTestBase
             +" repeated sint32 values = 1 [packed=true];\n"
             +"}\n"
     ;
+
+    final protected static String PROTOC_POINT_ARRAY_PACKED = "message Points {\n"
+//            +" repeated Point points = 1 [packed=true];\n"
+            +" repeated Point points = 1;\n"
+            +"}\n"
+            +PROTOC_POINT;
+    ;
     
     static class IntArray {
         public int[] values;
 
         public IntArray(int... v) {
             values = v;
+        }
+    }
+
+    static class PointArray {
+        public Point[] points;
+
+        public PointArray(Point... p) {
+            points = p;
         }
     }
     
@@ -132,20 +147,40 @@ public class SimpleWriteTest extends ProtobufTestBase
         byte[] bytes = w.writeValueAsBytes(new IntArray(3, -1, 2));
         // 3 x 2 bytes per value (typed tag, value) -> 6
         assertEquals(6, bytes.length);
+        assertEquals(0x8, bytes[0]); // zig-zagged vint (0) value, field 1
+        assertEquals(0x6, bytes[1]); // zig-zagged value for 3
+        assertEquals(0x8, bytes[2]);
+        assertEquals(0x1, bytes[3]); // zig-zagged value for -1
+        assertEquals(0x8, bytes[4]);
+        assertEquals(0x4, bytes[5]); // zig-zagged value for 2
     }
 
     public void testIntArrayPacked() throws Exception
     {
-        /*
-        final protected static String PROTOC_INT_ARRAY = "message Ints {\n"
-                +" repeated int32 values = 1;\n"
-                +"}\n"
-        ;
-        */
-        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_INT_ARRAY_PACKED);
-        final ObjectWriter w = MAPPER.writer(schema);
+        final ObjectWriter w = MAPPER.writer(ProtobufSchemaLoader.std.parse(PROTOC_INT_ARRAY_PACKED));
         byte[] bytes = w.writeValueAsBytes(new IntArray(3, -1, 2));
         // 1 byte for typed tag, 1 byte for length, 3 x 1 byte per value -> 5
         assertEquals(5, bytes.length);
+        assertEquals(0x8, bytes[0]); // zig-zagged vint (0) value, field 1
+        assertEquals(0x3, bytes[1]); // length for array, 3 bytes
+        assertEquals(0x6, bytes[2]); // zig-zagged value for 3
+        assertEquals(0x1, bytes[3]); // zig-zagged value for -1
+        assertEquals(0x4, bytes[4]); // zig-zagged value for 2
     }
+
+    /*
+    public void testPointArrayPacked() throws Exception
+    {
+        final ObjectWriter w = MAPPER.writer(ProtobufSchemaLoader.std.parse(PROTOC_POINT_ARRAY_PACKED));
+        byte[] bytes = w.writeValueAsBytes(new PointArray(new Point(1, 2), new Point(3, 4)));
+        // 1 byte for typed tag, 1 byte for length, 3 x 1 byte per value -> 5
+        assertEquals(14, bytes.length);
+        assertEquals(0xA, bytes[0]); // length-prefixed (2) value, field 1
+        assertEquals(12, bytes[1]); // length of entries in array
+
+        assertEquals(4, bytes[2]); // embedded message length
+
+        assertEquals(4, bytes[8]); // embedded message length
+    }
+    */
 }
