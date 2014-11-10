@@ -48,6 +48,7 @@ public class ProtobufParser extends ParserMinimalBase
         
         public boolean enabledByDefault() { return _defaultState; }
         public int getMask() { return _mask; }
+        public boolean enabledIn(int flags) { return (flags & _mask) != 0; }
     }
 
     /*

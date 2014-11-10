@@ -1,7 +1,6 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
 import com.fasterxml.jackson.databind.*;
-
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
@@ -24,9 +23,33 @@ public class SimpleWriteTest extends ProtobufTestBase
             bottomRight = new Point(x2, y2);
         }
     }
+
+    final protected static String PROTOC_INT_ARRAY_SPARSE = "message Ints {\n"
+            +" repeated sint32 values = 1;\n"
+            +"}\n"
+    ;
+
+    final protected static String PROTOC_INT_ARRAY_PACKED = "message Ints {\n"
+            +" repeated sint32 values = 1 [packed=true];\n"
+            +"}\n"
+    ;
+    
+    static class IntArray {
+        public int[] values;
+
+        public IntArray(int... v) {
+            values = v;
+        }
+    }
     
     final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
 
+    /*
+    /**********************************************************
+    /* POJO writes
+    /**********************************************************
+     */
+    
     public void testWritePoint() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
@@ -60,5 +83,41 @@ public class SimpleWriteTest extends ProtobufTestBase
         }
       
         assertEquals(11, bytes.length);
+    }
+
+    /*
+    /**********************************************************
+    /* Array writes
+    /**********************************************************
+     */
+
+    public void testIntArraySparse() throws Exception
+    {
+        /*
+        final protected static String PROTOC_INT_ARRAY = "message Ints {\n"
+                +" repeated int32 values = 1;\n"
+                +"}\n"
+        ;
+        */
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_INT_ARRAY_SPARSE);
+        final ObjectWriter w = MAPPER.writer(schema);
+        byte[] bytes = w.writeValueAsBytes(new IntArray(3, -1, 2));
+        // 3 x 2 bytes per value (typed tag, value) -> 6
+        assertEquals(6, bytes.length);
+    }
+
+    public void testIntArrayPacked() throws Exception
+    {
+        /*
+        final protected static String PROTOC_INT_ARRAY = "message Ints {\n"
+                +" repeated int32 values = 1;\n"
+                +"}\n"
+        ;
+        */
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_INT_ARRAY_PACKED);
+        final ObjectWriter w = MAPPER.writer(schema);
+        byte[] bytes = w.writeValueAsBytes(new IntArray(3, -1, 2));
+        // 1 byte for typed tag, 1 byte for length, 3 x 1 byte per value -> 5
+        assertEquals(5, bytes.length);
     }
 }
