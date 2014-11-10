@@ -21,14 +21,6 @@ public class ProtobufGenerator extends GeneratorBase
      * Enumeration that defines all togglable features for Protobuf generators
      */
     public enum Feature {
-        /**
-         * Feature that can be enabled to quietly ignore serialization of unknown
-         * fields.
-         *<p>
-         * Feature is disabled by default, so that an exception is thrown if unknown
-         * fields are encountered.
-         */
-        IGNORE_UNKNOWN_FIELDS(false)
         ;
 
         protected final boolean _defaultState;
@@ -284,7 +276,7 @@ public class ProtobufGenerator extends GeneratorBase
         if (f == null) {
             // May be ok, if we have said so
             if ((_currentMessage == UNKNOWN_MESSAGE)
-                    || Feature.IGNORE_UNKNOWN_FIELDS.enabledIn(_features)) {
+                    || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
                 f = UNKNOWN_FIELD;
             } else {
                 _reportError("Unrecognized field '"+id+"' (in Message of type "+_currentMessage.getName()
@@ -403,12 +395,12 @@ public class ProtobufGenerator extends GeneratorBase
         
         _pbContext = _pbContext.createChildArrayContext();
         _writeTag = !_currField.packed;
-
         /* Unpacked vs package: if unpacked, nothing special is needed, since it
          * is equivalent to just replicating same field N times.
          * With packed, need length prefix, all that stuff, so need accumulator
          */
         if (!_writeTag) { // packed
+            // note: tag SHOULD be written for array itself, but not contents
             _startBuffering(_currField.typedTag);
         }
     }
@@ -428,6 +420,7 @@ public class ProtobufGenerator extends GeneratorBase
         } else {
             _inObject = _pbContext.inObject();
         }
+
         // no arrays inside arrays, so parent can't be array and so:
         _writeTag = true; 
         // but, did we just end up packed array?
@@ -453,7 +446,12 @@ public class ProtobufGenerator extends GeneratorBase
             }
             _currentMessage = _currField.getMessageType();
             // and we need to start buffering, or add more nesting
-            _startBuffering(_currField.typedTag);
+            // but we may or may not want to write tag for object
+            if (_writeTag) {
+                _startBuffering(_currField.typedTag);
+            } else {
+                _startBuffering();
+            }
         }
         
         if (_inObject) {
@@ -994,7 +992,7 @@ public class ProtobufGenerator extends GeneratorBase
 
     private final int _writeTag(int wireType, int ptr)
     {
-        if (!_currField.packed) {
+        if (_writeTag) {
             final byte[] buf = _currentBuffer;
             int tag = _currField.typedTag;
             if (tag <= 0x7F) {
@@ -1017,6 +1015,10 @@ public class ProtobufGenerator extends GeneratorBase
     /**********************************************************
      */
 
+    /**
+     * Method called when buffering an entry that should be prefixed
+     * with a type tag.
+     */
     private final void _startBuffering(int typedTag) throws IOException
     {
         // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
@@ -1024,7 +1026,18 @@ public class ProtobufGenerator extends GeneratorBase
         // and leave the gap of 10 bytes
         _currentStart = _currentPtr = _currentPtr + 10;
         _buffered = new ByteAccumulator(_buffered, typedTag);
+    }
 
+    /**
+     * Method called when buffering an entry that should not be prefixed
+     * with a type tag.
+     */
+    private final void _startBuffering() throws IOException
+    {
+        // since no tag written, could skimp on space needed
+        _ensureRoom(16);
+        _currentStart = _currentPtr = _currentPtr + 5;
+        _buffered = new ByteAccumulator(_buffered);
     }
 
     private final void _finishBuffering() throws IOException
@@ -1042,7 +1055,7 @@ public class ProtobufGenerator extends GeneratorBase
             _currentStart = _currentPtr;
         }
     }
-    
+
     protected final void _ensureRoom(int needed) throws IOException
     {
         // common case: we got it already
