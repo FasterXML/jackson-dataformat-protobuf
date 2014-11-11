@@ -34,6 +34,26 @@ public class ProtobufUtil
         return 5;
     }
 
+    /**
+     * NOTE: caller MUST ensure buffer has room for at least 5 bytes
+     */
+    public static int appendLengthLength(int len, byte[] buffer, int ptr)
+    {
+        // first a quick check for common case
+        if (len <= 0x7F) {
+            // if negatives were allowed, would need another check here
+            buffer[ptr++] = (byte) len;
+            return ptr;
+        }
+        // but loop for longer content
+        do {
+            buffer[ptr++] = (byte) (0x80 + (len & 0x7F));
+            len = len >> 7;
+        } while (len > 0x7F);
+        buffer[ptr++] = (byte) len;
+        return ptr;
+    }
+    
     // NOTE: no negative values accepted
     public static byte[] lengthAsBytes(int len) {
         int bytes = lengthLength(len);

@@ -3,6 +3,7 @@ package com.fasterxml.jackson.dataformat.protobuf;
 import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import com.fasterxml.jackson.core.*;
@@ -504,32 +505,35 @@ public class ProtobufGenerator extends GeneratorBase
             return;
         }
         _verifyValueWrite();
-        // !!! TODO:
+        _writeString(text);
     }
 
     @Override
     public void writeString(char[] text, int offset, int len) throws IOException
     {
-        // !!! TODO:
+        _writeString(new String(text, offset, len));
     }
 
     @Override
     public final void writeString(SerializableString sstr) throws IOException
     {
+        _verifyValueWrite();
         byte[] b = sstr.asUnquotedUTF8();
-        // !!! TODO:
+        _writeLengthPrefixed(b,  0, b.length);
     }
 
     @Override
     public void writeRawUTF8String(byte[] text, int offset, int len) throws IOException
     {
-        // !!! TODO:
+        _verifyValueWrite();
+        _writeLengthPrefixed(text, offset, len);
     }
 
     @Override
     public final void writeUTF8String(byte[] text, int offset, int len) throws IOException
     {
-        // !!! TODO:
+        _verifyValueWrite();
+        _writeLengthPrefixed(text, offset, len);
     }
 
     /*
@@ -587,19 +591,15 @@ public class ProtobufGenerator extends GeneratorBase
             return;
         }
         _verifyValueWrite("write Binary value");
-        // ok, better just Base64 encode as a String...
-        if (offset > 0 || (offset+len) != data.length) {
-            data = Arrays.copyOfRange(data, offset, offset+len);
-        }
-        final int end = offset+len;
-        if (offset != 0 || end != data.length) {
-            // !!! TODO:
-        } else {
-            // !!! TODO:
-        }
 
-        //        String encoded = b64variant.encode(data);
-//        _writeScalar(encoded, "byte[]", STYLE_BASE64);
+        // Unlike with some other formats, let's NOT Base64 encoded even if nominally
+        // expecting String, and rather assume that if so, caller just provides as
+        // raw bytes of String
+        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
+            _reportError("Can not write binary value for for '"+_currField.name+"' (type "+_currField.type+")");
+        }
+        _ensureRoom(10);
+        _writeLengthPrefixed(data, offset, len);
     }
 
     /*
@@ -789,14 +789,55 @@ public class ProtobufGenerator extends GeneratorBase
 
     /*
     /**********************************************************
-    /* Internal text writing
+    /* Internal text/binary writes
     /**********************************************************
      */
 
+    private final static Charset UTF8 = Charset.forName("UTF-8");
+
     protected void _writeString(String v) throws IOException
     {
-        // !!!
-        throw new UnsupportedOperationException();
+        final byte[] b = v.getBytes(UTF8);
+        _writeLengthPrefixed(b, 0, b.length);
+    }
+
+    protected void _writeLengthPrefixed(byte[] data, int offset, int len) throws IOException
+    {
+        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currentPtr);
+        ptr = ProtobufUtil.appendLengthLength(len, _currentBuffer, ptr);
+
+        // and then loop until we are done
+        while (len > 0) {
+            int max = Math.min(len, _currentBuffer.length - ptr);
+            System.arraycopy(data, offset, _currentBuffer, ptr, max);
+            ptr += max;
+            if ((len -= max) == 0) {
+                _currentPtr = ptr;
+                break;
+            }
+            offset += max;
+
+            ByteAccumulator acc = _buffered;
+            final int start = _currentStart;
+            _currentStart = 0;
+            int toFlush = ptr - start;
+            ptr = 0;
+
+            // without accumulation, we know buffer is free for reuse
+            if (acc == null) {
+                if (toFlush > 0) {
+                    _output.write(_currentBuffer, start, toFlush);
+                }
+                ptr = 0;
+                continue;
+            }
+            // but with buffered, need to append, allocate new buffer (since old
+            // almost certainly contains buffered data)
+            if (toFlush > 0) {
+                acc.append(_currentBuffer, start, toFlush);
+            }
+            _currentBuffer = ProtobufUtil.allocSecondary(_currentBuffer);
+        }
     }
 
     /*
