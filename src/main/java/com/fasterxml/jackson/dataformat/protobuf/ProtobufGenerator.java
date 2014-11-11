@@ -4,7 +4,6 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.base.GeneratorBase;
@@ -19,7 +18,8 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.WireType;
 public class ProtobufGenerator extends GeneratorBase
 {
     /**
-     * Enumeration that defines all togglable features for Protobuf generators
+     * Enumeration that defines all togglable features for Protobuf generators.
+     * Currently none defined.
      */
     public enum Feature {
         ;
@@ -123,7 +123,7 @@ public class ProtobufGenerator extends GeneratorBase
      * Type of protobuf message that is currently being output: usually
      * matches write context, but for arrays may indicate "parent" of array.
      */
-    protected ProtobufMessage _currentMessage;
+    protected ProtobufMessage _currMessage;
     
     /**
      * Field to be output next; set when {@link JsonToken#FIELD_NAME} is written,
@@ -152,11 +152,11 @@ public class ProtobufGenerator extends GeneratorBase
      */
     protected ProtobufWriteContext _pbContext;
 
-    protected byte[] _currentBuffer;
+    protected byte[] _currBuffer;
 
-    protected int _currentStart;
+    protected int _currStart;
     
-    protected int _currentPtr;
+    protected int _currPtr;
     
     /*
     /**********************************************************
@@ -173,7 +173,7 @@ public class ProtobufGenerator extends GeneratorBase
         _protobufFeatures = pbFeatures;
         _output = output;
         _pbContext = ProtobufWriteContext.createNullContext();
-        _currentBuffer = ctxt.allocWriteEncodingBuffer();
+        _currBuffer = ctxt.allocWriteEncodingBuffer();
     }
 
     public void setSchema(ProtobufSchema schema)
@@ -259,7 +259,23 @@ public class ProtobufGenerator extends GeneratorBase
 
     @Override
     public final void writeFieldName(SerializableString name) throws IOException {
-        _findField(name.getValue());
+        if (!_inObject) {
+            _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
+        }
+        ProtobufField f = _currMessage.field(name);
+        if (f == null) {
+            // May be ok, if we have said so
+            if ((_currMessage == UNKNOWN_MESSAGE)
+                    || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
+                f = UNKNOWN_FIELD;
+            } else {
+                _reportError("Unrecognized field '"+name+"' (in Message of type "+_currMessage.getName()
+                        +"); known fields are: "+_currMessage.fieldsAsString());
+                        
+            }
+        }
+        _pbContext.setField(f);
+        _currField = f;
     }
 
     @Override
@@ -273,22 +289,22 @@ public class ProtobufGenerator extends GeneratorBase
         if (!_inObject) {
             _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
         }
-        ProtobufField f = _currentMessage.field(id);
+        ProtobufField f = _currMessage.field(id);
         if (f == null) {
             // May be ok, if we have said so
-            if ((_currentMessage == UNKNOWN_MESSAGE)
+            if ((_currMessage == UNKNOWN_MESSAGE)
                     || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
                 f = UNKNOWN_FIELD;
             } else {
-                _reportError("Unrecognized field '"+id+"' (in Message of type "+_currentMessage.getName()
-                        +"); known fields are: "+_currentMessage.fieldsAsString());
+                _reportError("Unrecognized field '"+id+"' (in Message of type "+_currMessage.getName()
+                        +"); known fields are: "+_currMessage.fieldsAsString());
                         
             }
         }
         _pbContext.setField(f);
         _currField = f;
     }
-    
+
     /*
     /**********************************************************
     /* Extended API, configuration
@@ -329,12 +345,12 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // can only flush if we do not need accumulation for length prefixes
         if (_buffered == null) {
-            int start = _currentStart;
-            int len = _currentPtr - start;
+            int start = _currStart;
+            int len = _currPtr - start;
             if (len > 0) {
-                _currentStart = 0;
-                _currentPtr = 0;
-                _output.write(_currentBuffer, start, len);
+                _currStart = 0;
+                _currPtr = 0;
+                _output.write(_currBuffer, start, len);
             }
         }
         _output.flush();
@@ -386,7 +402,7 @@ public class ProtobufGenerator extends GeneratorBase
             _reportError("Current context not an OBJECT, can not write arrays");
         }
         if (_currField == null) { // just a sanity check
-            _reportError("Can not write START_ARRAY without field (message type "+_currentMessage.getName()+")");
+            _reportError("Can not write START_ARRAY without field (message type "+_currMessage.getName()+")");
         }
         if (!_currField.isArray()) {
             _reportError("Can not write START_ARRAY: field '"+_currField.name+"' not declared as 'repeated'");
@@ -436,16 +452,16 @@ public class ProtobufGenerator extends GeneratorBase
         if (_currField == null) {
             // root?
             if (!_pbContext.inRoot()) {
-                _reportError("Can not write START_OBJECT without field (message type "+_currentMessage.getName()+")");
+                _reportError("Can not write START_OBJECT without field (message type "+_currMessage.getName()+")");
             }
-            _currentMessage = _schema.getRootType();
+            _currMessage = _schema.getRootType();
             // note: no buffering on root
         } else {
             // but also, field value must be Message if so
             if (!_currField.isObject()) {
                 _reportError("Can not write START_OBJECT: type of field '"+_currField.name+"' not Message but: "+_currField.type);
             }
-            _currentMessage = _currField.getMessageType();
+            _currMessage = _currField.getMessageType();
             // and we need to start buffering, or add more nesting
             // but we may or may not want to write tag for object
             if (_writeTag) {
@@ -456,10 +472,10 @@ public class ProtobufGenerator extends GeneratorBase
         }
         
         if (_inObject) {
-            _pbContext = _pbContext.createChildObjectContext(_currentMessage);
+            _pbContext = _pbContext.createChildObjectContext(_currMessage);
             _currField = null;
         } else { // must be array, then
-            _pbContext = _pbContext.createChildObjectContext(_currentMessage);
+            _pbContext = _pbContext.createChildObjectContext(_currMessage);
             // but do NOT clear next field here
             _inObject = true;
         }
@@ -479,7 +495,7 @@ public class ProtobufGenerator extends GeneratorBase
                 _complete();
             }
         } else {
-            _currentMessage = _pbContext.getMessageType();
+            _currMessage = _pbContext.getMessageType();
         }
         _currField = _pbContext.getField();
         // possible that we might be within array, which might be packed:
@@ -628,7 +644,7 @@ public class ProtobufGenerator extends GeneratorBase
             _writeInt64(1L);
             return;
         }
-        _reportError("Can not write `boolean` value for for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportError("Can not write `boolean` value for '"+_currField.name+"' (type "+_currField.type+")");
     }
 
     @Override
@@ -638,6 +654,14 @@ public class ProtobufGenerator extends GeneratorBase
 
         // protobuf has no way of writing null does it?
         // ...but should we try to add placeholders in arrays?
+
+        /* 10-Nov-2014, tatu: At least one problem: required fields...
+         *   Let's complain about those? In future, could add placeholders
+         *   for such cases.
+         */
+        if (_currField.required) {
+            _reportError("Can not omit writing of `null` value for required field '"+_currField.name+"' (type "+_currField.type+")");
+        }
     }
     
     @Override
@@ -763,7 +787,7 @@ public class ProtobufGenerator extends GeneratorBase
 
     protected final void _verifyValueWrite() throws IOException {
         if (_currField == null) {
-            _reportError("Can not write value without indicating field first (in message of type "+_currentMessage.getName()+")");
+            _reportError("Can not write value without indicating field first (in message of type "+_currMessage.getName()+")");
         }
     }
     
@@ -780,10 +804,10 @@ public class ProtobufGenerator extends GeneratorBase
 
     @Override
     protected void _releaseBuffers() {
-        byte[] b = _currentBuffer;
+        byte[] b = _currBuffer;
         if (b != null) {
             _ioContext.releaseWriteEncodingBuffer(b);
-            _currentBuffer = null;
+            _currBuffer = null;
         }
     }
 
@@ -803,30 +827,30 @@ public class ProtobufGenerator extends GeneratorBase
 
     protected void _writeLengthPrefixed(byte[] data, int offset, int len) throws IOException
     {
-        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currentPtr);
-        ptr = ProtobufUtil.appendLengthLength(len, _currentBuffer, ptr);
+        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr);
+        ptr = ProtobufUtil.appendLengthLength(len, _currBuffer, ptr);
 
         // and then loop until we are done
         while (len > 0) {
-            int max = Math.min(len, _currentBuffer.length - ptr);
-            System.arraycopy(data, offset, _currentBuffer, ptr, max);
+            int max = Math.min(len, _currBuffer.length - ptr);
+            System.arraycopy(data, offset, _currBuffer, ptr, max);
             ptr += max;
             if ((len -= max) == 0) {
-                _currentPtr = ptr;
+                _currPtr = ptr;
                 break;
             }
             offset += max;
 
             ByteAccumulator acc = _buffered;
-            final int start = _currentStart;
-            _currentStart = 0;
+            final int start = _currStart;
+            _currStart = 0;
             int toFlush = ptr - start;
             ptr = 0;
 
             // without accumulation, we know buffer is free for reuse
             if (acc == null) {
                 if (toFlush > 0) {
-                    _output.write(_currentBuffer, start, toFlush);
+                    _output.write(_currBuffer, start, toFlush);
                 }
                 ptr = 0;
                 continue;
@@ -834,9 +858,9 @@ public class ProtobufGenerator extends GeneratorBase
             // but with buffered, need to append, allocate new buffer (since old
             // almost certainly contains buffered data)
             if (toFlush > 0) {
-                acc.append(_currentBuffer, start, toFlush);
+                acc.append(_currBuffer, start, toFlush);
             }
-            _currentBuffer = ProtobufUtil.allocSecondary(_currentBuffer);
+            _currBuffer = ProtobufUtil.allocSecondary(_currBuffer);
         }
     }
 
@@ -850,13 +874,13 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // Max tag length 5 bytes, then at most 5 bytes
         _ensureRoom(10);
-        int ptr = _writeTag(WireType.VINT, _currentPtr);
+        int ptr = _writeTag(WireType.VINT, _currPtr);
         if (v < 0) {
-            _currentPtr = _writeVIntMax(v, ptr);
+            _currPtr = _writeVIntMax(v, ptr);
             return;
         }
 
-        final byte[] buf = _currentBuffer;
+        final byte[] buf = _currBuffer;
         if (v <= 0x7F) {
             buf[ptr++] = (byte) v;
         } else {
@@ -883,13 +907,13 @@ public class ProtobufGenerator extends GeneratorBase
                 }
             }
         }
-        _currentPtr = ptr;
+        _currPtr = ptr;
     }
 
     // off-lined version for 5-byte VInts
     private final int _writeVIntMax(int v, int ptr) throws IOException
     {
-        final byte[] buf = _currentBuffer;
+        final byte[] buf = _currBuffer;
         buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
         v >>>= 7;
         buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
@@ -906,16 +930,16 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // Max tag length 5 bytes, then at most 5 bytes
         _ensureRoom(10);
-        int ptr = _writeTag(WireType.VINT, _currentPtr);
+        int ptr = _writeTag(WireType.VINT, _currPtr);
         if (v < 0L) {
-            _currentPtr = _writeVLongMax(v, ptr);
+            _currPtr = _writeVLongMax(v, ptr);
             return;
         }
 
         // first, 4 bytes or less?
         if (v <= 0x0FFFFFFF) {
             int i = (int) v;
-            final byte[] buf = _currentBuffer;
+            final byte[] buf = _currBuffer;
 
             if (v <= 0x7F) {
                 buf[ptr++] = (byte) v;
@@ -926,12 +950,12 @@ public class ProtobufGenerator extends GeneratorBase
                 } while (i > 0x7F);
                 buf[ptr++] = (byte) i;
             }
-            _currentPtr = ptr;
+            _currPtr = ptr;
             return;
         }
         // nope, so we know 28 LSBs are to be written first
         int i = (int) v;
-        final byte[] buf = _currentBuffer;
+        final byte[] buf = _currBuffer;
 
         buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
         i >>>= 7;
@@ -956,13 +980,13 @@ public class ProtobufGenerator extends GeneratorBase
             } while (i > 0x7F);
             buf[ptr++] = (byte) i;
         }
-        _currentPtr = ptr;
+        _currPtr = ptr;
     }
 
     // off-lined version for 10-byte VLongs
     private final int _writeVLongMax(long v, int ptr) throws IOException
     {
-        final byte[] buf = _currentBuffer;
+        final byte[] buf = _currBuffer;
         // first, LSB 28 bits
         int i = (int) v;
         buf[ptr++] = (byte) ((i & 0x7F) + 0x80);
@@ -993,8 +1017,8 @@ public class ProtobufGenerator extends GeneratorBase
     
     private final void _writeInt32(int v) throws IOException
     {
-        final byte[] buf = _currentBuffer;
-        int ptr = _currentPtr;
+        final byte[] buf = _currBuffer;
+        int ptr = _currPtr;
         buf[ptr++] = (byte) v;
         v >>= 8;
         buf[ptr++] = (byte) v;
@@ -1002,13 +1026,13 @@ public class ProtobufGenerator extends GeneratorBase
         buf[ptr++] = (byte) v;
         v >>= 8;
         buf[ptr++] = (byte) v;
-        _currentPtr =  ptr;
+        _currPtr =  ptr;
     }
     
     private final void _writeInt64(long v64) throws IOException
     {
-        final byte[] buf = _currentBuffer;
-        int ptr = _currentPtr;
+        final byte[] buf = _currBuffer;
+        int ptr = _currPtr;
 
         int v = (int) v64;
         buf[ptr++] = (byte) v;
@@ -1028,13 +1052,13 @@ public class ProtobufGenerator extends GeneratorBase
         v >>= 8;
         buf[ptr++] = (byte) v;
         
-        _currentPtr =  ptr;
+        _currPtr =  ptr;
     }
 
     private final int _writeTag(int wireType, int ptr)
     {
         if (_writeTag) {
-            final byte[] buf = _currentBuffer;
+            final byte[] buf = _currBuffer;
             int tag = _currField.typedTag;
             if (tag <= 0x7F) {
                 buf[ptr++] = (byte) tag;
@@ -1065,7 +1089,7 @@ public class ProtobufGenerator extends GeneratorBase
         // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
         _ensureRoom(20);
         // and leave the gap of 10 bytes
-        _currentStart = _currentPtr = _currentPtr + 10;
+        _currStart = _currPtr = _currPtr + 10;
         _buffered = new ByteAccumulator(_buffered, typedTag);
     }
 
@@ -1077,74 +1101,74 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // since no tag written, could skimp on space needed
         _ensureRoom(16);
-        _currentStart = _currentPtr = _currentPtr + 5;
+        _currStart = _currPtr = _currPtr + 5;
         _buffered = new ByteAccumulator(_buffered);
     }
 
     private final void _finishBuffering() throws IOException
     {
-        final int start = _currentStart;
-        final int currLen = _currentPtr - start;
+        final int start = _currStart;
+        final int currLen = _currPtr - start;
         
         ByteAccumulator acc = _buffered;
-        acc = acc.finish(_output, _currentBuffer, start, currLen);
+        acc = acc.finish(_output, _currBuffer, start, currLen);
         _buffered = acc;
         if (acc == null) {
-            _currentStart = 0;
-            _currentPtr = 0;
+            _currStart = 0;
+            _currPtr = 0;
         } else {
-            _currentStart = _currentPtr;
+            _currStart = _currPtr;
         }
     }
 
     protected final void _ensureRoom(int needed) throws IOException
     {
         // common case: we got it already
-        if ((_currentPtr + needed) <= _currentBuffer.length) {
+        if ((_currPtr + needed) <= _currBuffer.length) {
             return;
         }
         // if not, either simple (flush), or 
-        final int start = _currentStart;
-        final int currLen = _currentPtr - start;
+        final int start = _currStart;
+        final int currLen = _currPtr - start;
         
-        _currentStart = 0;
-        _currentPtr = 0;
+        _currStart = 0;
+        _currPtr = 0;
 
         ByteAccumulator acc = _buffered;
         if (acc == null) {
             // without accumulation, we know buffer is free for reuse
             if (currLen > 0) {
-                _output.write(_currentBuffer, start, currLen);
+                _output.write(_currBuffer, start, currLen);
             }
             return;
         }
         // but with buffered, need to append, allocate new buffer (since old
         // almost certainly contains buffered data)
         if (currLen > 0) {
-            acc.append(_currentBuffer, start, currLen);
+            acc.append(_currBuffer, start, currLen);
         }
-        _currentBuffer = ProtobufUtil.allocSecondary(_currentBuffer);
+        _currBuffer = ProtobufUtil.allocSecondary(_currBuffer);
     }
 
     protected void _complete() throws IOException
     {
         _complete = true;
-        final int start = _currentStart;
-        final int currLen = _currentPtr - start;
-        _currentPtr = start;
+        final int start = _currStart;
+        final int currLen = _currPtr - start;
+        _currPtr = start;
 
         ByteAccumulator acc = _buffered;
         if (acc == null) {
             if (currLen > 0) {
-                _output.write(_currentBuffer, start, currLen);
-                _currentStart = 0;
-                _currentPtr = 0;
+                _output.write(_currBuffer, start, currLen);
+                _currStart = 0;
+                _currPtr = 0;
             }
         } else {
-            acc = acc.finish(_output, _currentBuffer, start, currLen);
+            acc = acc.finish(_output, _currBuffer, start, currLen);
             while (acc != null) {
                 acc = acc.finish(_output);
-            } while (acc != null);
+            }
             _buffered = null;
         }
     }

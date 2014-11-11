@@ -2,6 +2,8 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import java.util.*;
 
+import com.fasterxml.jackson.core.SerializableString;
+
 public class ProtobufMessage
 {
     protected final String _name;
@@ -26,6 +28,11 @@ public class ProtobufMessage
         return _fields.get(name);
     }
 
+    // !!! TODO: optimize
+    public ProtobufField field(SerializableString name) {
+        return _fields.get(name.getValue());
+    }
+    
     public String fieldsAsString() {
         return _fields.keySet().toString();
     }

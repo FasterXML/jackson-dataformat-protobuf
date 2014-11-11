@@ -223,12 +223,12 @@ public class ProtobufFactory extends JsonFactory
      * Check whether specified generator feature is enabled.
      */
     public final boolean isEnabled(ProtobufGenerator.Feature f) {
-        return (_formatGeneratorFeatures & f.getMask()) != 0;
+        return f.enabledIn(_formatGeneratorFeatures);
     }
 
     /*
     /**********************************************************
-    /* Overridden parser factory methods, new (2.1)
+    /* Overridden parser factory method
     /**********************************************************
      */
 
