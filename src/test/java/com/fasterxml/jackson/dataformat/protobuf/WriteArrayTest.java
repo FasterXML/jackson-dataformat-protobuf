@@ -1,8 +1,9 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
+import org.junit.Assert;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
@@ -18,6 +19,16 @@ public class WriteArrayTest extends ProtobufTestBase
             +"}\n"
     ;
 
+    final protected static String PROTOC_STRING_ARRAY_SPARSE = "message Ints {\n"
+            +" repeated string values = 1;\n"
+            +"}\n"
+    ;
+
+    final protected static String PROTOC_STRING_ARRAY_PACKED = "message Ints {\n"
+            +" repeated string values = 1 [packed=true];\n"
+            +"}\n"
+    ;
+    
     final protected static String PROTOC_POINT_ARRAY_SPARSE = "message Points {\n"
             +" repeated Point points = 1;\n"
             +"}\n"
@@ -28,8 +39,8 @@ public class WriteArrayTest extends ProtobufTestBase
           +" repeated Point points = 1 [packed=true];\n"
           +"}\n"
           +PROTOC_POINT;
-  ;
-    
+    ;
+
     static class IntArray {
         public int[] values;
 
@@ -38,6 +49,14 @@ public class WriteArrayTest extends ProtobufTestBase
         }
     }
 
+    static class StringArray {
+        public String[] values;
+
+        public StringArray(String... v) {
+            values = v;
+        }
+    }
+    
     static class PointArray {
         public Point[] points;
 
@@ -86,6 +105,32 @@ public class WriteArrayTest extends ProtobufTestBase
         assertEquals(0x4, bytes[4]); // zig-zagged value for 2
     }
 
+    public void testStringArraySparse() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_STRING_ARRAY_SPARSE);
+        final ObjectWriter w = MAPPER.writer(schema);
+        byte[] bytes = w.writeValueAsBytes(new StringArray("Foo", "Bar"));
+        assertEquals(10, bytes.length);
+        Assert.assertArrayEquals(new byte[] {
+                0xA, 3, 'F', 'o', 'o',
+                0xA, 3, 'B', 'a', 'r',
+        }, bytes);
+    }
+
+    public void testStringArrayPacked() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_STRING_ARRAY_PACKED);
+        final ObjectWriter w = MAPPER.writer(schema);
+        byte[] bytes = w.writeValueAsBytes(new StringArray("A", "B", "C"));
+        assertEquals(8, bytes.length);
+        Assert.assertArrayEquals(new byte[] {
+                0xA, 6,
+                1, 'A',
+                1, 'B',
+                1, 'C',
+        }, bytes);
+    }
+    
     public void testPointArraySparse() throws Exception
     {
         final ObjectWriter w = MAPPER.writer(ProtobufSchemaLoader.std.parse(PROTOC_POINT_ARRAY_SPARSE));
