@@ -47,14 +47,13 @@ public class WriteStringsTest extends ProtobufTestBase
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
         final ObjectWriter w = MAPPER.writer(schema);
-        
         StringBuilder sb = new StringBuilder();
         do {
             sb.append("Bob");
         } while (sb.length() < 128);
         final String LONG_NAME = sb.toString();
         final int longLen = LONG_NAME.length();
-        
+
         byte[] bytes = w.writeValueAsBytes(new Name("Bill", LONG_NAME));
         // 5 bytes for fields (tag, length), 4 for first name, N for second
         assertEquals(9 + longLen, bytes.length);
