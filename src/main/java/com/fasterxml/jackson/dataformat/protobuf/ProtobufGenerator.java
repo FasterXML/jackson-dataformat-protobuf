@@ -278,19 +278,6 @@ public class ProtobufGenerator extends GeneratorBase
         _currField = f;
     }
 
-    @Override
-    public final void writeStringField(String fieldName, String value) throws IOException
-    {
-        _findField(fieldName);
-        if (value == null) {
-            writeNull();
-            return;
-        }
-        _verifyValueWrite();
-        _writeString(value);
-    
-    }
-
     /*
     /**********************************************************
     /* Extended API, configuration
