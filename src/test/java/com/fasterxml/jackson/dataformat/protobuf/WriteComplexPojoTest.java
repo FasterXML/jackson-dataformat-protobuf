@@ -16,7 +16,7 @@ public class WriteComplexPojoTest extends ProtobufTestBase
     /**********************************************************
      */
 
-    public void testIntArraySparse() throws Exception
+    public void testMediaItemSimple() throws Exception
     {
         /*
         final protected static String PROTOC_INT_ARRAY = "message Ints {\n"

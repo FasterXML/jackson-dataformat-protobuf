@@ -43,20 +43,51 @@ public class WriteStringsTest extends ProtobufTestBase
         assertEquals((byte) 'r', bytes[12]);
     }
 
-    public void testSimpleLong() throws Exception
+    public void testSimpleLongAscii() throws Exception
+    {
+        _testSimpleLong(129, "Bob");
+        _testSimpleLong(2007, "Bill");
+        _testSimpleLong(9000, "Emily");
+    }
+
+    public void testSimpleLongTwoByteUTF8() throws Exception
+    {
+        _testSimpleLong(90, "\u00A8a\u00F3");
+        _testSimpleLong(129, "\u00A8a\u00F3");
+        _testSimpleLong(2007, "\u00E8\u00EC");
+        _testSimpleLong(7000, "\u00A8xy");
+    }
+
+    public void testSimpleLongThreeByteUTF8() throws Exception
+    {
+        _testSimpleLong(90, "\u2009\u3333");
+        _testSimpleLong(129, "\u2009\u3333");
+        _testSimpleLong(2007, "abc\u3333");
+        _testSimpleLong(5000, "");
+    }
+    
+    private void _testSimpleLong(int clen, String part) throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
         final ObjectWriter w = MAPPER.writer(schema);
+    
         StringBuilder sb = new StringBuilder();
         do {
-            sb.append("Bob");
-        } while (sb.length() < 128);
+            sb.append(part);
+        } while (sb.length() < clen);
         final String LONG_NAME = sb.toString();
-        final int longLen = LONG_NAME.length();
 
+        final byte[] LONG_BYTES = LONG_NAME.getBytes("UTF-8");
+        
+        final int longLen = LONG_BYTES.length;
+        
         byte[] bytes = w.writeValueAsBytes(new Name("Bill", LONG_NAME));
-        // 5 bytes for fields (tag, length), 4 for first name, N for second
-        assertEquals(9 + longLen, bytes.length);
+        // 4 or 5 bytes for fields (tag, length), 4 for first name, N for second
+        int expLen = 8 + longLen;
+        if (longLen > 127) {
+            expLen += 1;
+        }
+        assertEquals(expLen, bytes.length);
 
         // at main level just seq of fields; first one 1 byte tag, 1 byte len, 3 chars -> 5
         // and second similarly 1 + 1 + 6 -> 8
@@ -66,12 +97,18 @@ public class WriteStringsTest extends ProtobufTestBase
         assertEquals((byte) 'i', bytes[3]);
         assertEquals((byte) 'l', bytes[4]);
         assertEquals((byte) 'l', bytes[5]);
-    
         assertEquals(0x3A, bytes[6]); // length-prefixed (2), field 7
-        assertEquals(128 + (longLen & 0x7F), bytes[7] & 0xFF); // sign set for non-last length bytes
-        assertEquals(longLen >> 7, bytes[8]); // no sign bit set
+    
+        int offset = 7;
+
+        if (longLen <= 0x7F) {
+            assertEquals((longLen & 0x7F), bytes[offset++] & 0xFF); // sign set for non-last length bytes
+        } else {
+            assertEquals(128 + (longLen & 0x7F), bytes[offset++] & 0xFF); // sign set for non-last length bytes
+            assertEquals(longLen >> 7, bytes[offset++]); // no sign bit set
+        }
         for (int i = 0; i < longLen; ++i) {
-            assertEquals((byte) LONG_NAME.charAt(i), bytes[9+i]);
+            assertEquals((byte) LONG_BYTES[i], bytes[offset+i]);
         }
     }
 }
