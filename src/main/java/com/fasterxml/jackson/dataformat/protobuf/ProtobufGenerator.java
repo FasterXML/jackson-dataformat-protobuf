@@ -1226,8 +1226,9 @@ public class ProtobufGenerator extends GeneratorBase
         // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
         _ensureRoom(20);
         // and leave the gap of 10 bytes
-        _currStart = _currPtr = _currPtr + 10;
-        _buffered = new ByteAccumulator(_buffered, typedTag);
+        int ptr = _currPtr;
+        _currStart = _currPtr = ptr + 10;
+        _buffered = new ByteAccumulator(_buffered, typedTag, _currBuffer, ptr);
     }
 
     /**
@@ -1238,8 +1239,9 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // since no tag written, could skimp on space needed
         _ensureRoom(16);
-        _currStart = _currPtr = _currPtr + 5;
-        _buffered = new ByteAccumulator(_buffered);
+        int ptr = _currPtr;
+        _currStart = _currPtr = ptr + 5;
+        _buffered = new ByteAccumulator(_buffered, _currBuffer, ptr);
     }
 
     private final void _finishBuffering() throws IOException
