@@ -28,7 +28,7 @@ public class WriteComplexPojoTest extends ProtobufTestBase
 
         assertNotNull(bytes);
 
-        assertEquals(260, bytes.length);
+        assertEquals(246, bytes.length);
         // !!! TODO: verify
     }
 }

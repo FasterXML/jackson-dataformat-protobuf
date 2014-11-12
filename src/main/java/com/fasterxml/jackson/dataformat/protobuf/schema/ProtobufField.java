@@ -1,5 +1,10 @@
 package com.fasterxml.jackson.dataformat.protobuf.schema;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+
+import com.fasterxml.jackson.core.SerializableString;
 import com.squareup.protoparser.MessageType.Field;
 
 public class ProtobufField
@@ -30,7 +35,10 @@ public class ProtobufField
      */
     protected ProtobufMessage messageType;
 
-    protected final ProtobufEnum enumType;
+    /**
+     * For fields of type {@link FieldType#ENUM}, mapping from names to ids.
+     */
+    protected final Map<String,Integer> enumValues;
 
     protected final boolean isObject;
     
@@ -56,7 +64,11 @@ public class ProtobufField
         this.type = type;
         wireType = type.getWireType();
         usesZigZag = type.usesZigZag();
-        enumType = et;
+        if (et == null) {
+            enumValues = Collections.emptyMap();
+        } else {
+            enumValues = et.valueMapping();
+        }
         messageType = msg;
 
         if (nativeField == null) { // for "unknown" field
@@ -96,8 +108,19 @@ public class ProtobufField
         return messageType;
     }
 
-    public ProtobufEnum getEnumType() {
-        return enumType;
+    public int findEnumIndex(SerializableString key) {
+        // !!! TODO: optimize if possible
+        Integer I = enumValues.get(key.getValue());
+        return (I == null) ? -1 : I.intValue();
+    }
+
+    public int findEnumIndex(String key) {
+        Integer I = enumValues.get(key);
+        return (I == null) ? -1 : I.intValue();
+    }
+
+    public Collection<String> getEnumValues() {
+        return enumValues.keySet();
     }
 
     public boolean isObject() {

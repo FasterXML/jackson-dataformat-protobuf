@@ -17,4 +17,8 @@ public class ProtobufEnum
     public Integer findEnum(String name) {
         return _valuesByName.get(name);
     }
+
+    public Map<String,Integer> valueMapping() {
+        return _valuesByName;
+    }
 }
