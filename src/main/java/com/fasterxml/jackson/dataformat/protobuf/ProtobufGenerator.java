@@ -172,7 +172,7 @@ public class ProtobufGenerator extends GeneratorBase
         _ioContext = ctxt;
         _protobufFeatures = pbFeatures;
         _output = output;
-        _pbContext = ProtobufWriteContext.createNullContext();
+        _pbContext = _rootContext = ProtobufWriteContext.createNullContext();
         _currBuffer = ctxt.allocWriteEncodingBuffer();
     }
 
@@ -254,7 +254,23 @@ public class ProtobufGenerator extends GeneratorBase
 
     @Override
     public final void writeFieldName(String name) throws IOException {
-        _findField(name);
+        if (!_inObject) {
+            _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
+        }
+        ProtobufField f = _currMessage.field(name);
+        if (f == null) {
+            // May be ok, if we have said so
+            if ((_currMessage == UNKNOWN_MESSAGE)
+                    || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
+                f = UNKNOWN_FIELD;
+            } else {
+                _reportError("Unrecognized field '"+name+"' (in Message of type "+_currMessage.getName()
+                        +"); known fields are: "+_currMessage.fieldsAsString());
+                        
+            }
+        }
+        _pbContext.setField(f);
+        _currField = f;
     }
 
     @Override
@@ -493,6 +509,12 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
+
+        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
+            _reportWrongWireType("string");
+            return;
+        }
+
         // Couple of choices; short (guaranteed to have length <= 127); medium (guaranteed
         // to fit in single buffer); and large (something else)
 
@@ -583,6 +605,11 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
+        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
+            _reportWrongWireType("string");
+            return;
+        }
+
         // Could guarantee with 42 chars or less; but let's do bit more speculative
         if (clen > 99) {
             _encodeLongerString(text, offset, clen);
@@ -659,6 +686,10 @@ public class ProtobufGenerator extends GeneratorBase
     public final void writeString(SerializableString sstr) throws IOException
     {
         _verifyValueWrite();
+        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
+            _reportWrongWireType("string");
+            return;
+        }
         byte[] b = sstr.asUnquotedUTF8();
         _writeLengthPrefixed(b,  0, b.length);
     }
@@ -667,6 +698,10 @@ public class ProtobufGenerator extends GeneratorBase
     public void writeRawUTF8String(byte[] text, int offset, int len) throws IOException
     {
         _verifyValueWrite();
+        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
+            _reportWrongWireType("string");
+            return;
+        }
         _writeLengthPrefixed(text, offset, len);
     }
 
@@ -674,11 +709,15 @@ public class ProtobufGenerator extends GeneratorBase
     public final void writeUTF8String(byte[] text, int offset, int len) throws IOException
     {
         _verifyValueWrite();
+        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
+            _reportWrongWireType("string");
+            return;
+        }
         _writeLengthPrefixed(text, offset, len);
     }
 
     private final static Charset UTF8 = Charset.forName("UTF-8");
-
+    
     /*
     /**********************************************************
     /* Output method implementations, unprocessed ("raw")
@@ -739,7 +778,8 @@ public class ProtobufGenerator extends GeneratorBase
         // expecting String, and rather assume that if so, caller just provides as
         // raw bytes of String
         if (_currField.wireType != WireType.LENGTH_PREFIXED) {
-            _reportError("Can not write binary value for for '"+_currField.name+"' (type "+_currField.type+")");
+            _reportWrongWireType("binary");
+            return;
         }
         _ensureRoom(10);
         _writeLengthPrefixed(data, offset, len);
@@ -755,7 +795,7 @@ public class ProtobufGenerator extends GeneratorBase
     public void writeBoolean(boolean state) throws IOException
     {
         _verifyValueWrite();
-
+        
         // same as 'writeNumber(int)', really
         final int type = _currField.wireType;
 
@@ -771,13 +811,16 @@ public class ProtobufGenerator extends GeneratorBase
             _writeInt64(1L);
             return;
         }
-        _reportError("Can not write `boolean` value for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportWrongWireType("boolean");
     }
 
     @Override
     public void writeNull() throws IOException
     {
         _verifyValueWrite();
+        if (_currField == UNKNOWN_FIELD) {
+            return;
+        }
 
         // protobuf has no way of writing null does it?
         // ...but should we try to add placeholders in arrays?
@@ -813,7 +856,7 @@ public class ProtobufGenerator extends GeneratorBase
             _writeInt64(v);
             return;
         }
-        _reportError("Can not write `int` value for for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportWrongWireType("int");
     }
 
     @Override
@@ -838,7 +881,7 @@ public class ProtobufGenerator extends GeneratorBase
             _writeInt64(v);
             return;
         }
-        _reportError("Can not write `long` value for for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportWrongWireType("long");
     }
 
     @Override
@@ -846,6 +889,9 @@ public class ProtobufGenerator extends GeneratorBase
     {
         if (v == null) {
             writeNull();
+            return;
+        }
+        if (_currField == UNKNOWN_FIELD) {
             return;
         }
         // !!! TODO: better scheme to detect overflow or something
@@ -872,7 +918,7 @@ public class ProtobufGenerator extends GeneratorBase
             _encodeLongerString(String.valueOf(d));
             return;
         }
-        _reportError("Can not write `double` value for for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportWrongWireType("double");
     }    
 
     @Override
@@ -893,7 +939,7 @@ public class ProtobufGenerator extends GeneratorBase
             _encodeLongerString(String.valueOf(f));
             return;
         }
-        _reportError("Can not write `float` value for for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportWrongWireType("float");
     }
 
     @Override
@@ -901,6 +947,9 @@ public class ProtobufGenerator extends GeneratorBase
     {
         if (v == null) {
             writeNull();
+            return;
+        }
+        if (_currField == UNKNOWN_FIELD) {
             return;
         }
         // !!! TODO: better handling here... exception or write as string or... ?
@@ -936,33 +985,6 @@ public class ProtobufGenerator extends GeneratorBase
             _ioContext.releaseWriteEncodingBuffer(b);
             _currBuffer = null;
         }
-    }
-
-    /*
-    /**********************************************************
-    /* Internal lookups
-    /**********************************************************
-     */
-    
-    private final void _findField(String id) throws IOException
-    {
-        if (!_inObject) {
-            _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
-        }
-        ProtobufField f = _currMessage.field(id);
-        if (f == null) {
-            // May be ok, if we have said so
-            if ((_currMessage == UNKNOWN_MESSAGE)
-                    || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
-                f = UNKNOWN_FIELD;
-            } else {
-                _reportError("Unrecognized field '"+id+"' (in Message of type "+_currMessage.getName()
-                        +"); known fields are: "+_currMessage.fieldsAsString());
-                        
-            }
-        }
-        _pbContext.setField(f);
-        _currField = f;
     }
 
     /*
@@ -1340,6 +1362,13 @@ public class ProtobufGenerator extends GeneratorBase
     /* Helper methods, error reporting
     /**********************************************************
      */
+
+    protected void _reportWrongWireType(String typeStr) throws IOException {
+        if (_currField == UNKNOWN_FIELD) {
+            return;
+        }
+        _reportError("Can not write `string` value for '"+_currField.name+"' (type "+_currField.type+")");
+    }
     
     private void _throwIllegalSurrogate(int code)
     {

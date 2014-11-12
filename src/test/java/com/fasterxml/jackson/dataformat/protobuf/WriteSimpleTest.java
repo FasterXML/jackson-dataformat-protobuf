@@ -1,11 +1,22 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
 public class WriteSimpleTest extends ProtobufTestBase
 {
+    static class Point3D extends Point {
+        public int z;
+        
+        public Point3D(int x, int y, int z) {
+            super(x, y);
+            this.z = z;
+        }
+    }
+
     final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
 
     /*
@@ -21,14 +32,14 @@ public class WriteSimpleTest extends ProtobufTestBase
                 .withSchema(schema);
         byte[] bytes = w.writeValueAsBytes(new Point(7, 2));
         assertNotNull(bytes);
-        
+
         // 4 bytes: 1 byte tags, 1 byte values
         assertEquals(4, bytes.length);
         assertEquals(8, bytes[0]); // wire type 0 (3 LSB), id of 1 (-> 0x8)
         assertEquals(7, bytes[1]); // VInt 7, no zig-zag
         assertEquals(0x10, bytes[2]); // wire type 0 (3 LSB), id of 2 (-> 0x10)
         assertEquals(4, bytes[3]); // VInt 2, but with zig-zag
-    }
+}
 
     public void testWriteCoord() throws Exception
     {
@@ -74,5 +85,28 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(0x18, bytes[9]); // vint value, 0x18 remains as is
         assertEquals(0x10, bytes[10]); // wire type 0 (vint), tag id 2
         assertEquals(0x1E, bytes[11]); // zig-zagged vint value, 0xF becomes 0x1E
+    }
+
+    public void testUnknownProperties() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
+        final ObjectWriter w = MAPPER.writerWithType(Point3D.class)
+                .withSchema(schema);
+        
+        // First: if disabled, should get an error
+        try {
+            /*byte[] bytes =*/ w
+                .without(JsonGenerator.Feature.IGNORE_UNKNOWN)
+                .writeValueAsBytes(new Point3D(1, 2, 3));
+        } catch (JsonProcessingException e) {
+            verifyException(e, "Unrecognized field 'z'");
+        }
+
+        byte[] bytes = w
+                .with(JsonGenerator.Feature.IGNORE_UNKNOWN)
+                .writeValueAsBytes(new Point3D(1, 2, 3));
+        assertNotNull(bytes);
+        assertNotNull(bytes);
+        assertEquals(4, bytes.length);
     }
 }

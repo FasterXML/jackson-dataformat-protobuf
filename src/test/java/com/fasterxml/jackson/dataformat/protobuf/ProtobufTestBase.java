@@ -103,7 +103,7 @@ abstract class ProtobufTestBase extends TestCase
     /* POJO classes to use with protoc definitions
     /**********************************************************
      */
-    
+
     static class Point {
         public int x;
         public int y;
