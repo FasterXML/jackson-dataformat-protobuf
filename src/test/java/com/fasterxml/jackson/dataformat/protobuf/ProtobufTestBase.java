@@ -33,7 +33,7 @@ abstract class ProtobufTestBase extends TestCase
             +" required int32 x = 1;\n"
             +" required sint32 y = 2;\n"
             +"}\n";
-    
+
     final protected static String PROTOC_BOX =
             PROTOC_POINT
             +"message Box {\n"
@@ -50,6 +50,13 @@ abstract class ProtobufTestBase extends TestCase
             +"}\n"
     ;
 
+    final protected static String PROTOC_NAME =
+            "message Name {\n"
+            +" required string first = 2;\n"
+            +" required string last = 7;\n"
+            +"}\n"
+    ;
+    
     // protoc definition from 'jvm-serializers' project:
     final protected static String PROTOC_MEDIA_ITEM =
 "package serializers.protobuf.media;\n"+
@@ -116,6 +123,16 @@ abstract class ProtobufTestBase extends TestCase
         }
     }
 
+    static class Name {
+        public String first, last;
+
+        public Name() { }
+        public Name(String f, String l) {
+            first = f;
+            last = l;
+        }
+    }
+    
     // // // POJOs for "JVM-serializers" case
     
     static class  MediaItem

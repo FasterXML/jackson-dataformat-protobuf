@@ -61,7 +61,7 @@ public class ProtobufUtil
         int last = bytes-1;
 
         for (int i = 0; i < last; ++i) {
-            result[i] = (byte) ((len & 0x7F) + 0x80);
+            result[i] = (byte) (0x80 + (len & 0x7F));
             len >>= 7;
         }
         result[last] = (byte) len;

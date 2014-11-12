@@ -50,7 +50,7 @@ public class ProtobufGenerator extends GeneratorBase
         public boolean enabledIn(int flags) { return (flags & getMask()) != 0; }
         public boolean enabledByDefault() { return _defaultState; }
         public int getMask() { return _mask; }
-    };
+    }
 
     /*
     /**********************************************************
@@ -506,14 +506,143 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
-        _verifyValueWrite();
-        _writeString(text);
-    }
+        // Couple of choices; short (guaranteed to have length <= 127); medium (guaranteed
+        // to fit in single buffer); and large (something else)
 
+        final int len = text.length();
+        // since max encoded = 3*42 == 126
+        if (len > 42) { // Oh yeah, so we FINALLY have the ultimate question answered here
+            _encodeLongerString(text);
+            return;
+        }
+
+        _verifyValueWrite();
+        _ensureRoom(140); // 126 for bytes, 1 for length, 5 for tag, at least
+        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr) + 1; // +1 to leave room for length indicator
+        final int start = ptr;
+        final byte[] buf = _currBuffer;
+        int i = 0;
+
+        while (true) {
+            int c = text.charAt(i);
+            if (c > 0x7F) {
+                break;
+            }
+            buf[ptr++] = (byte) c;
+            if (++i >= len) { // done!
+                buf[start-1] = (byte) (ptr - start);
+                _currPtr = ptr;
+                return;
+            }
+        }
+
+        // no; non-aSCII stuff, slower loop
+        while (i < len) {
+            int c = text.charAt(i++);
+            if (c <= 0x7F) {
+                buf[ptr++] = (byte) c;
+                continue;
+            }
+            // Nope, multi-byte:
+            if (c < 0x800) { // 2-byte
+                buf[ptr++] = (byte) (0xc0 | (c >> 6));
+                buf[ptr++] = (byte) (0x80 | (c & 0x3f));
+                continue;
+            }
+            // 3 or 4 bytes (surrogate)
+            // Surrogates?
+            if (c < SURR1_FIRST || c > SURR2_LAST) { // nope, regular 3-byte character
+                buf[ptr++] = (byte) (0xe0 | (c >> 12));
+                buf[ptr++] = (byte) (0x80 | ((c >> 6) & 0x3f));
+                buf[ptr++] = (byte) (0x80 | (c & 0x3f));
+                continue;
+            }
+            // Yup, a surrogate pair
+            if (c > SURR1_LAST) { // must be from first range; second won't do
+                _throwIllegalSurrogate(c);
+            }
+            // ... meaning it must have a pair
+            if (i >= len) {
+                _throwIllegalSurrogate(c);
+            }
+            c = _decodeSurrogate(c, text.charAt(i++));
+            if (c > 0x10FFFF) { // illegal in JSON as well as in XML
+                _throwIllegalSurrogate(c);
+            }
+            buf[ptr++] = (byte) (0xf0 | (c >> 18));
+            buf[ptr++] = (byte) (0x80 | ((c >> 12) & 0x3f));
+            buf[ptr++] = (byte) (0x80 | ((c >> 6) & 0x3f));
+            buf[ptr++] = (byte) (0x80 | (c & 0x3f));
+        }
+        buf[start-1] = (byte) (ptr - start);
+        _currPtr = ptr;
+    }
+    
     @Override
-    public void writeString(char[] text, int offset, int len) throws IOException
+    public void writeString(char[] text, int offset, int clen) throws IOException
     {
-        _writeString(new String(text, offset, len));
+        if (text == null) {
+            writeNull();
+            return;
+        }
+        if (clen > 42) { // ... the ultimate question being "... that fits within 7-bit length indicator"
+            _encodeLongerString(text, offset, clen);
+            return;
+        }
+        _verifyValueWrite();
+        _ensureRoom(140); // 126 for bytes, 1 for length, 5 for tag, at least
+        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr) + 1; // +1 to leave room for length indicator
+        final int start = ptr;
+        final byte[] buf = _currBuffer;
+        final int end = offset + clen;
+
+        while (true) {
+            int c = text[offset];
+            if (c > 0x7F) {
+                break;
+            }
+            buf[ptr++] = (byte) c;
+            if (++offset >= end) { // done!
+                buf[start-1] = (byte) (ptr - start);
+                _currPtr = ptr;
+                return;
+            }
+        }
+        while (offset < end) {
+            int c = text[offset++];
+            if (c <= 0x7F) {
+                buf[ptr++] = (byte) c;
+                continue;
+            }
+            if (c < 0x800) {
+                buf[ptr++] = (byte) (0xc0 | (c >> 6));
+                buf[ptr++] = (byte) (0x80 | (c & 0x3f));
+                continue;
+            }
+            if (c < SURR1_FIRST || c > SURR2_LAST) {
+                buf[ptr++] = (byte) (0xe0 | (c >> 12));
+                buf[ptr++] = (byte) (0x80 | ((c >> 6) & 0x3f));
+                buf[ptr++] = (byte) (0x80 | (c & 0x3f));
+                continue;
+            }
+            if (c > SURR1_LAST) {
+                _throwIllegalSurrogate(c);
+            }
+            // ... meaning it must have a pair
+            if (offset >= end) {
+                _throwIllegalSurrogate(c);
+            }
+            c = _decodeSurrogate(c, text[offset++]);
+            if (c > 0x10FFFF) { // illegal in JSON as well as in XML
+                _throwIllegalSurrogate(c);
+            }
+            buf[ptr++] = (byte) (0xf0 | (c >> 18));
+            buf[ptr++] = (byte) (0x80 | ((c >> 12) & 0x3f));
+            buf[ptr++] = (byte) (0x80 | ((c >> 6) & 0x3f));
+            buf[ptr++] = (byte) (0x80 | (c & 0x3f));
+        }
+        buf[start-1] = (byte) (ptr - start);
+        _currPtr = ptr;
     }
 
     @Override
@@ -537,6 +666,8 @@ public class ProtobufGenerator extends GeneratorBase
         _verifyValueWrite();
         _writeLengthPrefixed(text, offset, len);
     }
+
+    private final static Charset UTF8 = Charset.forName("UTF-8");
 
     /*
     /**********************************************************
@@ -728,7 +859,7 @@ public class ProtobufGenerator extends GeneratorBase
             return;
         }
         if (_currField.type == FieldType.STRING) {
-            _writeString(String.valueOf(d));
+            _encodeLongerString(String.valueOf(d));
             return;
         }
         _reportError("Can not write `double` value for for '"+_currField.name+"' (type "+_currField.type+")");
@@ -749,7 +880,7 @@ public class ProtobufGenerator extends GeneratorBase
             return;
         }
         if (_currField.type == FieldType.STRING) {
-            _writeString(String.valueOf(f));
+            _encodeLongerString(String.valueOf(f));
             return;
         }
         _reportError("Can not write `float` value for for '"+_currField.name+"' (type "+_currField.type+")");
@@ -830,14 +961,20 @@ public class ProtobufGenerator extends GeneratorBase
     /**********************************************************
      */
 
-    private final static Charset UTF8 = Charset.forName("UTF-8");
-
-    protected void _writeString(String v) throws IOException
+    protected void _encodeLongerString(char[] text, int offset, int clen) throws IOException
     {
-        final byte[] b = v.getBytes(UTF8);
+        _verifyValueWrite();
+        byte[] b = new String(text, offset, clen).getBytes(UTF8);
         _writeLengthPrefixed(b, 0, b.length);
     }
 
+    protected void _encodeLongerString(String text) throws IOException
+    {
+        byte[] b = text.getBytes(UTF8);
+        _writeLengthPrefixed(b, 0, b.length);
+    }
+    
+    
     protected void _writeLengthPrefixed(byte[] data, int offset, int len) throws IOException
     {
         int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr);
@@ -1068,6 +1205,12 @@ public class ProtobufGenerator extends GeneratorBase
         _currPtr =  ptr;
     }
 
+    /*
+    /**********************************************************
+    /* Helper methods, buffering
+    /**********************************************************
+     */
+
     private final int _writeTag(int wireType, int ptr)
     {
         if (_writeTag) {
@@ -1087,12 +1230,6 @@ public class ProtobufGenerator extends GeneratorBase
         return ptr;
     }
 
-    /*
-    /**********************************************************
-    /* Helper methods
-    /**********************************************************
-     */
-
     /**
      * Method called when buffering an entry that should be prefixed
      * with a type tag.
@@ -1102,8 +1239,9 @@ public class ProtobufGenerator extends GeneratorBase
         // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
         _ensureRoom(20);
         // and leave the gap of 10 bytes
-        _currStart = _currPtr = _currPtr + 10;
-        _buffered = new ByteAccumulator(_buffered, typedTag);
+        int ptr = _currPtr;
+        _currStart = _currPtr = ptr + 10;
+        _buffered = new ByteAccumulator(_buffered, typedTag, _currBuffer, ptr);
     }
 
     /**
@@ -1114,8 +1252,9 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // since no tag written, could skimp on space needed
         _ensureRoom(16);
-        _currStart = _currPtr = _currPtr + 5;
-        _buffered = new ByteAccumulator(_buffered);
+        int ptr = _currPtr;
+        _currStart = _currPtr = ptr + 5;
+        _buffered = new ByteAccumulator(_buffered, _currBuffer, ptr);
     }
 
     private final void _finishBuffering() throws IOException
@@ -1184,5 +1323,26 @@ public class ProtobufGenerator extends GeneratorBase
             }
             _buffered = null;
         }
+    }
+
+    /*
+    /**********************************************************
+    /* Helper methods, error reporting
+    /**********************************************************
+     */
+    
+    private void _throwIllegalSurrogate(int code)
+    {
+        if (code > 0x10FFFF) { // over max?
+            throw new IllegalArgumentException("Illegal character point (0x"+Integer.toHexString(code)+") to output; max is 0x10FFFF as per RFC 4627");
+        }
+        if (code >= SURR1_FIRST) {
+            if (code <= SURR1_LAST) { // Unmatched first part (closing without second part?)
+                throw new IllegalArgumentException("Unmatched first part of surrogate pair (0x"+Integer.toHexString(code)+")");
+            }
+            throw new IllegalArgumentException("Unmatched second part of surrogate pair (0x"+Integer.toHexString(code)+")");
+        }
+        // should we ever get this?
+        throw new IllegalArgumentException("Illegal character point (0x"+Integer.toHexString(code)+") to output");
     }
 }
