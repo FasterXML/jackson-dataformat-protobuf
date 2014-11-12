@@ -279,30 +279,16 @@ public class ProtobufGenerator extends GeneratorBase
     }
 
     @Override
-    public final void writeStringField(String fieldName, String value) throws IOException {
-        _findField(fieldName);
-        writeString(value);
-    }
-
-    private final void _findField(String id) throws IOException
+    public final void writeStringField(String fieldName, String value) throws IOException
     {
-        if (!_inObject) {
-            _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
+        _findField(fieldName);
+        if (value == null) {
+            writeNull();
+            return;
         }
-        ProtobufField f = _currMessage.field(id);
-        if (f == null) {
-            // May be ok, if we have said so
-            if ((_currMessage == UNKNOWN_MESSAGE)
-                    || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
-                f = UNKNOWN_FIELD;
-            } else {
-                _reportError("Unrecognized field '"+id+"' (in Message of type "+_currMessage.getName()
-                        +"); known fields are: "+_currMessage.fieldsAsString());
-                        
-            }
-        }
-        _pbContext.setField(f);
-        _currField = f;
+        _verifyValueWrite();
+        _writeString(value);
+    
     }
 
     /*
@@ -809,6 +795,33 @@ public class ProtobufGenerator extends GeneratorBase
             _ioContext.releaseWriteEncodingBuffer(b);
             _currBuffer = null;
         }
+    }
+
+    /*
+    /**********************************************************
+    /* Internal lookups
+    /**********************************************************
+     */
+    
+    private final void _findField(String id) throws IOException
+    {
+        if (!_inObject) {
+            _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
+        }
+        ProtobufField f = _currMessage.field(id);
+        if (f == null) {
+            // May be ok, if we have said so
+            if ((_currMessage == UNKNOWN_MESSAGE)
+                    || isEnabled(JsonGenerator.Feature.IGNORE_UNKNOWN)) {
+                f = UNKNOWN_FIELD;
+            } else {
+                _reportError("Unrecognized field '"+id+"' (in Message of type "+_currMessage.getName()
+                        +"); known fields are: "+_currMessage.fieldsAsString());
+                        
+            }
+        }
+        _pbContext.setField(f);
+        _currField = f;
     }
 
     /*
