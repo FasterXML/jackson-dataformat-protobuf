@@ -531,7 +531,7 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _verifyValueWrite();
         _ensureRoom(clen+clen+clen+2); // up to 3 bytes per char; and possibly 2 bytes for length
-        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr) + 1; // +1 to leave room for length indicator
+        int ptr = _writeTag(_currPtr) + 1; // +1 to leave room for length indicator
         final int start = ptr;
         final byte[] buf = _currBuffer;
         int i = 0;
@@ -624,7 +624,7 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _verifyValueWrite();
         _ensureRoom(clen+clen+clen+2); // up to 3 bytes per char; and possibly 2 bytes for length
-        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr) + 1; // +1 to leave room for length indicator
+        int ptr = _writeTag(_currPtr) + 1; // +1 to leave room for length indicator
         final int start = ptr;
         final byte[] buf = _currBuffer;
         final int end = offset + clen;
@@ -733,7 +733,17 @@ public class ProtobufGenerator extends GeneratorBase
         if (index < 0) {
             _reportEnumError(str);
         }
-        _writeVInt(index);
+        // basically, _writeVInt, but very likely to be very short; but if not:
+        final int tag = _currField.typedTag;
+        int ptr = _currPtr;
+        if (index > 0x7F || tag > 0x7F || (_currPtr + 1) >= _currBuffer.length) {
+            _writeVInt(index);
+            return;
+        }
+        final byte[] buf = _currBuffer;
+        buf[ptr++] = (byte) tag;
+        buf[ptr++] = (byte) index;
+        _currPtr = ptr;
     }
 
     protected void _writeEnum(SerializableString sstr) throws IOException
@@ -742,7 +752,17 @@ public class ProtobufGenerator extends GeneratorBase
         if (index < 0) {
             _reportEnumError(sstr.getValue());
         }
-        _writeVInt(index);
+        // basically, _writeVInt, but very likely to be very short; but if not:
+        final int tag = _currField.typedTag;
+        int ptr = _currPtr;
+        if (index > 0x7F || tag > 0x7F || (_currPtr + 1) >= _currBuffer.length) {
+            _writeVInt(index);
+            return;
+        }
+        final byte[] buf = _currBuffer;
+        buf[ptr++] = (byte) tag;
+        buf[ptr++] = (byte) index;
+        _currPtr = ptr;
     }
 
     protected void _reportEnumError(String enumStr) throws IOException
@@ -1044,7 +1064,7 @@ public class ProtobufGenerator extends GeneratorBase
     
     protected void _writeLengthPrefixed(byte[] data, int offset, int len) throws IOException
     {
-        int ptr = _writeTag(WireType.LENGTH_PREFIXED, _currPtr);
+        int ptr = _writeTag(_currPtr);
         ptr = ProtobufUtil.appendLengthLength(len, _currBuffer, ptr);
 
         // and then loop until we are done
@@ -1091,7 +1111,7 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // Max tag length 5 bytes, then at most 5 bytes
         _ensureRoom(10);
-        int ptr = _writeTag(WireType.VINT, _currPtr);
+        int ptr = _writeTag(_currPtr);
         if (v < 0) {
             _currPtr = _writeVIntMax(v, ptr);
             return;
@@ -1147,7 +1167,7 @@ public class ProtobufGenerator extends GeneratorBase
     {
         // Max tag length 5 bytes, then at most 5 bytes
         _ensureRoom(10);
-        int ptr = _writeTag(WireType.VINT, _currPtr);
+        int ptr = _writeTag(_currPtr);
         if (v < 0L) {
             _currPtr = _writeVLongMax(v, ptr);
             return;
@@ -1278,7 +1298,7 @@ public class ProtobufGenerator extends GeneratorBase
     /**********************************************************
      */
 
-    private final int _writeTag(int wireType, int ptr)
+    private final int _writeTag(int ptr)
     {
         if (_writeTag) {
             final byte[] buf = _currBuffer;
