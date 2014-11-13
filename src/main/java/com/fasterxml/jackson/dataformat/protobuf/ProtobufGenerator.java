@@ -1165,8 +1165,8 @@ public class ProtobufGenerator extends GeneratorBase
     
     private final void _writeVLong(long v) throws IOException
     {
-        // Max tag length 5 bytes, then at most 5 bytes
-        _ensureRoom(10);
+        // Max tag length 5 bytes, then at most 10 bytes
+        _ensureRoom(16);
         int ptr = _writeTag(_currPtr);
         if (v < 0L) {
             _currPtr = _writeVLongMax(v, ptr);
