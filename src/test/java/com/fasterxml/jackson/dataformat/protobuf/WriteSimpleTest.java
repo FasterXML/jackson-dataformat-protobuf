@@ -28,8 +28,8 @@ public class WriteSimpleTest extends ProtobufTestBase
     public void testWritePoint() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
-        final ObjectWriter w = MAPPER.writerWithType(Point.class)
-                .withSchema(schema);
+        final ObjectWriter w = MAPPER.writerFor(Point.class)
+                .with(schema);
         byte[] bytes = w.writeValueAsBytes(new Point(7, 2));
         assertNotNull(bytes);
 
@@ -45,8 +45,8 @@ public class WriteSimpleTest extends ProtobufTestBase
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Box");
         schema = schema.withRootType("Box");
-        final ObjectWriter w = MAPPER.writerWithType(Box.class)
-                .withSchema(schema);
+        final ObjectWriter w = MAPPER.writerFor(Box.class)
+                .with(schema);
         byte[] bytes = w.writeValueAsBytes(new Box(0x3F, 0x11, 0x18, 0xF));
         assertNotNull(bytes);
         
@@ -90,8 +90,8 @@ public class WriteSimpleTest extends ProtobufTestBase
     public void testUnknownProperties() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
-        final ObjectWriter w = MAPPER.writerWithType(Point3D.class)
-                .withSchema(schema);
+        final ObjectWriter w = MAPPER.writerFor(Point3D.class)
+                .with(schema);
         
         // First: if disabled, should get an error
         try {

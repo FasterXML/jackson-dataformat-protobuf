@@ -14,13 +14,28 @@ public class ProtobufWriteContext
      * either object for the field (for Message/Object types), or its
      * parent (for Array types)
      */
-    protected final ProtobufMessage _message;
+    protected ProtobufMessage _message;
 
     /**
      * Field within either current object (for Object context); or, parent
      * field (for Array)
      */
     protected ProtobufField _field;
+
+    /**
+     * @since 2.5
+     */
+    protected Object _currentValue;
+
+    /*
+    /**********************************************************
+    /* Simple instance reuse slots; speed up things
+    /* a bit (10-15%) for docs with lots of small
+    /* arrays/objects
+    /**********************************************************
+     */
+
+    protected ProtobufWriteContext _child = null;
     
     /*
     /**********************************************************
@@ -35,6 +50,12 @@ public class ProtobufWriteContext
         _type = type;
         _parent = parent;
         _message = msg;
+    }
+
+    private void reset(int type, ProtobufMessage msg, ProtobufField f) {
+        _type = type;
+        _message = msg;
+        _field = f;
     }
     
     // // // Factory methods
@@ -52,14 +73,31 @@ public class ProtobufWriteContext
     }
     
     public ProtobufWriteContext createChildArrayContext() {
-        ProtobufWriteContext ctxt = new ProtobufWriteContext(TYPE_ARRAY, this, _message);
-        ctxt._field = _field;
+        ProtobufWriteContext ctxt = _child;
+        if (ctxt == null) {
+            _child = ctxt = new ProtobufWriteContext(TYPE_ARRAY, this, _message);
+            ctxt._field = _field;
+            return ctxt;
+        }
+        ctxt.reset(TYPE_ARRAY, _message, _field);
         return ctxt;
     }
 
     public ProtobufWriteContext createChildObjectContext(ProtobufMessage type) {
-        return new ProtobufWriteContext(TYPE_OBJECT, this, type);
+        ProtobufWriteContext ctxt = _child;
+        if (ctxt == null) {
+            _child = ctxt = new ProtobufWriteContext(TYPE_OBJECT, this, type);
+            return ctxt;
+        }
+        ctxt.reset(TYPE_OBJECT, type, null);
+        return ctxt;
     }
+
+    /*
+    /**********************************************************
+    /* Simple accessors, mutators
+    /**********************************************************
+     */
     
     @Override
     public final ProtobufWriteContext getParent() { return _parent; }
@@ -69,6 +107,16 @@ public class ProtobufWriteContext
         return ((_type == TYPE_OBJECT) && (_field != null)) ? _field.name : null;
     }
 
+    @Override
+    public Object getCurrentValue() {
+        return _currentValue;
+    }
+
+    @Override
+    public void setCurrentValue(Object v) {
+        _currentValue = v;
+    }
+    
     public void setField(ProtobufField f) {
         _field = f;
     }
@@ -80,29 +128,22 @@ public class ProtobufWriteContext
     public ProtobufMessage getMessageType() {
         return _message;
     }
-    
+
     public StringBuilder appendDesc(StringBuilder sb) {
         if (_parent != null) {
             sb = _parent.appendDesc(sb);
         }
+        sb.append('/');
         switch (_type) {
         case TYPE_OBJECT:
-            if (_field == null) {
-                sb.append("{}");
-            } else {
-                sb.append("{'");
+            if (_field != null) {
                 sb.append(_field.name);
-                sb.append("'}");
             }
             break;
         case TYPE_ARRAY:
-            sb.append('[');
             sb.append(getCurrentIndex());
-            sb.append(']');
             break;
         case TYPE_ROOT:
-            // should we do anything?
-            sb.append('/');
         }
         return sb;
     }
@@ -110,7 +151,7 @@ public class ProtobufWriteContext
     // // // Overridden standard methods
     
     /**
-     * Overridden to provide developer writeable "JsonPath" representation
+     * Overridden to provide developer JsonPointer representation
      * of the context.
      */
     @Override
