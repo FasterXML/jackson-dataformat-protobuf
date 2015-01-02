@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.fasterxml.jackson</groupId>
     <artifactId>jackson-parent</artifactId>
-    <version>2.5-rc1</version>
+    <version>2.5</version>
   </parent>
   <groupId>com.fasterxml.jackson.dataformat</groupId>
   <artifactId>jackson-dataformat-protobuf</artifactId>
@@ -23,8 +23,8 @@ abstractions.
   </scm>
 
   <properties>
-    <jackson.version.annotations>2.5.0-SNAPSHOT</jackson.version.annotations>
-    <jackson.version.core>2.5.0-SNAPSHOT</jackson.version.core>
+    <jackson.version.annotations>2.5.0</jackson.version.annotations>
+    <jackson.version.core>2.5.0</jackson.version.core>
 
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
     <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
