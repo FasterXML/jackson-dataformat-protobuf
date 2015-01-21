@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufField;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
 
 import junit.framework.TestCase;
 
@@ -229,6 +231,24 @@ abstract class ProtobufTestBase extends TestCase
     /**********************************************************
      */
 
+    protected void _verifyMessageFieldLinking(ProtobufMessage msg)
+    {
+        ProtobufField prev = null;
+        for (ProtobufField curr : msg.fields()) {
+            if (prev != null) {
+                if (prev.next != curr) {
+                    fail("Linking broken for type '"+msg.getName()+", field '"+curr.name+"'; points to "+prev.next);
+                }
+            }
+            prev = curr;
+        }
+        // also, verify that the last field not linked
+        if (prev.next != null) {
+            fail("Linking broken for type '"+msg.getName()+", last field '"+prev.name
+                    +"' should be null, points to "+prev.next);
+        }
+    }
+    
     protected void assertToken(JsonToken expToken, JsonToken actToken)
     {
         if (actToken != expToken) {

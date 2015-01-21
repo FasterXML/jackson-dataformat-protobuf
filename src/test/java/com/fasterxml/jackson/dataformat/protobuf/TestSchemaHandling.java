@@ -27,6 +27,8 @@ public class TestSchemaHandling extends ProtobufTestBase
         assertEquals("SearchRequest", all.get(0));
         ProtobufMessage msg = schema.getRootType();
         assertEquals(4, msg.getFieldCount());
+
+        _verifyMessageFieldLinking(msg);
     }
 
     public void testBoxAndPoint() throws Exception
@@ -37,6 +39,7 @@ public class TestSchemaHandling extends ProtobufTestBase
         assertEquals(2, all.size());
         assertTrue(all.contains("Box"));
         assertTrue(all.contains("Point"));
+        _verifyMessageFieldLinking(schema.getRootType());
     }
 
     public void testRecursive() throws Exception
@@ -51,6 +54,7 @@ public class TestSchemaHandling extends ProtobufTestBase
         ProtobufField f = msg.field("id");
         assertNotNull(f);
         assertEquals("id", f.name);
-//        List<ProtobufField> fields = msg.get
+
+        _verifyMessageFieldLinking(schema.getRootType());
     }
 }

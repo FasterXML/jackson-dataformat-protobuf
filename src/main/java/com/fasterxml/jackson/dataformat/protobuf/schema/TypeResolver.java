@@ -94,7 +94,7 @@ public class TypeResolver
             _resolvedMessageTypes = new HashMap<String,ProtobufMessage>();
         }
         _resolvedMessageTypes.put(rawType.getName(), message);
-        
+
         // and then resolve fields
         for (Field f : rawType.getFields()) {
             String typeStr = f.getType();
@@ -129,6 +129,12 @@ public class TypeResolver
             throw new IllegalArgumentException("Unknown protobuf field type '"+typeStr
                     +"' for field '"+f.getName()+"' of MessageType '"+rawType.getName()
                     +"' (known enum types: "+enumStr+"; known message types: "+msgStr+")");
+        }
+
+        // And then link the fields, to speed up iteration
+        List<ProtobufField> f = new ArrayList<ProtobufField>(fields.values());
+        for (int i = 0, end = f.size()-1; i < end; ++i) {
+            f.get(i).assignNext(f.get(i+1));
         }
         return message;
     }    

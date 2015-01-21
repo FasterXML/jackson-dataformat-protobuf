@@ -41,6 +41,13 @@ public class ProtobufField
     protected final Map<String,Integer> enumValues;
 
     protected final boolean isObject;
+
+    /**
+     * Link to next field within message definition; used for efficient traversal.
+     * Due to inverse construction order need to be assigned after construction;
+     * but functionally immutable.
+     */
+    public ProtobufField next;
     
     public ProtobufField(Field nativeField, FieldType type) {
         this(nativeField, type, null, null);
@@ -102,6 +109,13 @@ public class ProtobufField
             throw new IllegalStateException("Can not assign message type for non-message field '"+name+"'");
         }
         messageType = msgType;
+    }
+
+    public void assignNext(ProtobufField next) {
+        if (this.next != null) {
+            throw new IllegalStateException("Can not overwrite 'next' after being set");
+        }
+        this.next = next;
     }
 
     public ProtobufMessage getMessageType() {

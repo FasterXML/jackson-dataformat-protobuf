@@ -112,7 +112,7 @@ public class ProtobufGenerator extends GeneratorBase
      * false for packed arrays, true for others.
      */
     protected boolean _writeTag;
-    
+
     /**
      * Flag that is set when the whole content is complete, can
      * be output.
@@ -124,13 +124,13 @@ public class ProtobufGenerator extends GeneratorBase
      * matches write context, but for arrays may indicate "parent" of array.
      */
     protected ProtobufMessage _currMessage;
-    
+
     /**
      * Field to be output next; set when {@link JsonToken#FIELD_NAME} is written,
      * cleared once value has been written
      */
     protected ProtobufField _currField;
-    
+
     /*
     /**********************************************************
     /* Output buffering
@@ -146,7 +146,7 @@ public class ProtobufGenerator extends GeneratorBase
      * Object used In cases where we need to buffer content to calculate length-prefix.
      */
     protected ByteAccumulator _buffered;
-    
+
     /**
      * Current context, in form we can use it.
      */
@@ -155,15 +155,15 @@ public class ProtobufGenerator extends GeneratorBase
     protected byte[] _currBuffer;
 
     protected int _currStart;
-    
+
     protected int _currPtr;
-    
+
     /*
     /**********************************************************
     /* Life-cycle
     /**********************************************************
      */
-    
+
     public ProtobufGenerator(IOContext ctxt, int jsonFeatures, int pbFeatures,
             ObjectCodec codec, OutputStream output)
         throws IOException
@@ -278,7 +278,18 @@ public class ProtobufGenerator extends GeneratorBase
         if (!_inObject) {
             _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
         }
-        ProtobufField f = _currMessage.field(name);
+        ProtobufField f = _currField;
+        
+        if (f != null) {
+            ProtobufField next = f.next;
+            if (next != null && next.name.equals(name.getValue())) {
+                f = next;
+            } else {
+                f = _currMessage.field(name);
+            }
+        } else  {
+            f = _currMessage.field(name);
+        }
         if (f == null) {
             // May be ok, if we have said so
             if ((_currMessage == UNKNOWN_MESSAGE)

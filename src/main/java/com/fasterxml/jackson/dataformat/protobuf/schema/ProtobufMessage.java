@@ -28,12 +28,16 @@ public class ProtobufMessage
         return _fields.get(name);
     }
 
-    // !!! TODO: optimize
+    // !!! TODO: optimize?
     public ProtobufField field(SerializableString name) {
         return _fields.get(name.getValue());
     }
     
     public String fieldsAsString() {
         return _fields.keySet().toString();
+    }
+
+    public Iterable<ProtobufField> fields() {
+        return _fields.values();
     }
 }
