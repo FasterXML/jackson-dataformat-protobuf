@@ -16,41 +16,6 @@ import com.fasterxml.jackson.core.util.TextBuffer;
 
 public class ProtobufParser extends ParserMinimalBase
 {
-    /**
-     * Enumeration that defines all togglable features for CBOR generators.
-     */
-    public enum Feature {
-        // no features yet
-        ;
-
-        final boolean _defaultState;
-        final int _mask;
-        
-        /**
-         * Method that calculates bit set (flags) of all features that
-         * are enabled by default.
-         */
-        public static int collectDefaults()
-        {
-            int flags = 0;
-            for (Feature f : values()) {
-                if (f.enabledByDefault()) {
-                    flags |= f.getMask();
-                }
-            }
-            return flags;
-        }
-        
-        private Feature(boolean defaultState) {
-            _defaultState = defaultState;
-            _mask = (1 << ordinal());
-        }
-        
-        public boolean enabledByDefault() { return _defaultState; }
-        public int getMask() { return _mask; }
-        public boolean enabledIn(int flags) { return (flags & _mask) != 0; }
-    }
-
     /*
     /**********************************************************
     /* Configuration
@@ -308,7 +273,7 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
-    public ProtobufParser(IOContext ctxt, int parserFeatures, int formatFeatures,
+    public ProtobufParser(IOContext ctxt, int parserFeatures,
             ObjectCodec codec,
             InputStream in, byte[] inputBuffer, int start, int end,
             boolean bufferRecyclable)

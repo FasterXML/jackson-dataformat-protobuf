@@ -15,34 +15,6 @@ public class ProtobufFactory extends JsonFactory
 
     /*
     /**********************************************************
-    /* Constants
-    /**********************************************************
-     */
-
-    /**
-     * Bitfield (set of flags) of all parser features that are enabled
-     * by default.
-     */
-//    final static int DEFAULT_PBUF_PARSER_FEATURE_FLAGS = ProtobufParser.Feature.collectDefaults();
-    final static int DEFAULT_PBUF_PARSER_FEATURE_FLAGS = 0;
-
-    /**
-     * Bitfield (set of flags) of all generator features that are enabled
-     * by default.
-     */
-    final static int DEFAULT_PBUF_GENERATOR_FEATURE_FLAGS = ProtobufGenerator.Feature.collectDefaults();
-
-    /*
-    /**********************************************************
-    /* Configuration
-    /**********************************************************
-     */
-
-    protected int _formatParserFeatures;
-    protected int _formatGeneratorFeatures;
-    
-    /*
-    /**********************************************************
     /* Factory construction, configuration
     /**********************************************************
      */
@@ -51,14 +23,11 @@ public class ProtobufFactory extends JsonFactory
 
     public ProtobufFactory(ObjectCodec codec) {
         super(codec);
-        _formatParserFeatures = DEFAULT_PBUF_PARSER_FEATURE_FLAGS;
-        _formatGeneratorFeatures = DEFAULT_PBUF_GENERATOR_FEATURE_FLAGS;
     }
+
     protected ProtobufFactory(ProtobufFactory src, ObjectCodec oc)
     {
         super(src, oc);
-        _formatParserFeatures = src._formatParserFeatures;
-        _formatGeneratorFeatures = src._formatGeneratorFeatures;
     }
 
     @Override
@@ -136,98 +105,6 @@ public class ProtobufFactory extends JsonFactory
 
     /*
     /**********************************************************
-    /* Configuration, parser settings
-    /**********************************************************
-     */
-
-    /**
-     * Method for enabling or disabling specified parser feature
-     * (check {@link ProtobufParser.Feature} for list of features)
-     */
-    public final ProtobufFactory configure(ProtobufParser.Feature f, boolean state)
-    {
-        if (state) {
-            enable(f);
-        } else {
-            disable(f);
-        }
-        return this;
-    }
-
-    /**
-     * Method for enabling specified parser feature
-     * (check {@link ProtobufParser.Feature} for list of features)
-     */
-    public ProtobufFactory enable(ProtobufParser.Feature f) {
-        _formatParserFeatures |= f.getMask();
-        return this;
-    }
-
-    /**
-     * Method for disabling specified parser features
-     * (check {@link ProtobufParser.Feature} for list of features)
-     */
-    public ProtobufFactory disable(ProtobufParser.Feature f) {
-        _formatParserFeatures &= ~f.getMask();
-        return this;
-    }
-
-    /**
-     * Checked whether specified parser feature is enabled.
-     */
-    public final boolean isEnabled(ProtobufParser.Feature f) {
-        return (_formatParserFeatures & f.getMask()) != 0;
-    }
-
-    /*
-    /**********************************************************
-    /* Configuration, generator settings
-    /**********************************************************
-     */
-
-    /**
-     * Method for enabling or disabling specified generator feature
-     * (check {@link ProtobufGenerator.Feature} for list of features)
-     *
-     * @since 1.2
-     */
-    public final ProtobufFactory configure(ProtobufGenerator.Feature f, boolean state) {
-        if (state) {
-            enable(f);
-        } else {
-            disable(f);
-        }
-        return this;
-    }
-
-
-    /**
-     * Method for enabling specified generator features
-     * (check {@link ProtobufGenerator.Feature} for list of features)
-     */
-    public ProtobufFactory enable(ProtobufGenerator.Feature f) {
-        _formatGeneratorFeatures |= f.getMask();
-        return this;
-    }
-
-    /**
-     * Method for disabling specified generator feature
-     * (check {@link ProtobufGenerator.Feature} for list of features)
-     */
-    public ProtobufFactory disable(ProtobufGenerator.Feature f) {
-        _formatGeneratorFeatures &= ~f.getMask();
-        return this;
-    }
-
-    /**
-     * Check whether specified generator feature is enabled.
-     */
-    public final boolean isEnabled(ProtobufGenerator.Feature f) {
-        return f.enabledIn(_formatGeneratorFeatures);
-    }
-
-    /*
-    /**********************************************************
     /* Overridden parser factory method
     /**********************************************************
      */
@@ -268,8 +145,7 @@ public class ProtobufFactory extends JsonFactory
         IOContext ctxt = _createContext(out, false);
         ctxt.setEncoding(enc);
         out = _decorate(out, ctxt);
-        return _createProtobufGenerator(ctxt,
-                _generatorFeatures, _formatGeneratorFeatures, _objectCodec, out);
+        return _createProtobufGenerator(ctxt, _generatorFeatures, _objectCodec, out);
     }
 
     /**
@@ -283,8 +159,7 @@ public class ProtobufFactory extends JsonFactory
     public ProtobufGenerator createGenerator(OutputStream out) throws IOException {
         IOContext ctxt = _createContext(out, false);
         out = _decorate(out, ctxt);
-        return _createProtobufGenerator(ctxt,
-                _generatorFeatures, _formatGeneratorFeatures, _objectCodec, out);
+        return _createProtobufGenerator(ctxt, _generatorFeatures, _objectCodec, out);
     }
 
     /*
@@ -302,7 +177,7 @@ public class ProtobufFactory extends JsonFactory
     protected ProtobufParser _createParser(InputStream in, IOContext ctxt) throws IOException
     {
         byte[] buf = ctxt.allocReadIOBuffer();
-        return new ProtobufParser(ctxt, _parserFeatures, _formatParserFeatures,
+        return new ProtobufParser(ctxt, _parserFeatures,
                 _objectCodec, in, buf, 0, 0, true);
     }
 
@@ -320,7 +195,7 @@ public class ProtobufFactory extends JsonFactory
     @Override
     protected ProtobufParser _createParser(byte[] data, int offset, int len, IOContext ctxt) throws IOException
     {
-        return new ProtobufParser(ctxt, _parserFeatures, _formatParserFeatures,
+        return new ProtobufParser(ctxt, _parserFeatures,
                 _objectCodec, null, data, offset, len, false);
     }
 
@@ -331,8 +206,7 @@ public class ProtobufFactory extends JsonFactory
 
     @Override
     protected ProtobufGenerator _createUTF8Generator(OutputStream out, IOContext ctxt) throws IOException {
-        return _createProtobufGenerator(ctxt,
-                _generatorFeatures, _formatGeneratorFeatures, _objectCodec, out);
+        return _createProtobufGenerator(ctxt, _generatorFeatures, _objectCodec, out);
     }
 
     @Override
@@ -341,9 +215,9 @@ public class ProtobufFactory extends JsonFactory
     }
 
     private final ProtobufGenerator _createProtobufGenerator(IOContext ctxt,
-            int stdFeat, int formatFeat, ObjectCodec codec, OutputStream out) throws IOException
+            int stdFeat, ObjectCodec codec, OutputStream out) throws IOException
     {
-        return new ProtobufGenerator(ctxt, stdFeat, formatFeat, _objectCodec, out);
+        return new ProtobufGenerator(ctxt, stdFeat, _objectCodec, out);
     }
     
     protected <T> T _nonByteTarget() {

@@ -17,41 +17,6 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.WireType;
 
 public class ProtobufGenerator extends GeneratorBase
 {
-    /**
-     * Enumeration that defines all togglable features for Protobuf generators.
-     * Currently none defined.
-     */
-    public enum Feature {
-        ;
-
-        protected final boolean _defaultState;
-        protected final int _mask;
-        
-        /**
-         * Method that calculates bit set (flags) of all features that
-         * are enabled by default.
-         */
-        public static int collectDefaults()
-        {
-            int flags = 0;
-            for (Feature f : values()) {
-                if (f.enabledByDefault()) {
-                    flags |= f.getMask();
-                }
-            }
-            return flags;
-        }
-        
-        private Feature(boolean defaultState) {
-            _defaultState = defaultState;
-            _mask = (1 << ordinal());
-        }
-
-        public boolean enabledIn(int flags) { return (flags & getMask()) != 0; }
-        public boolean enabledByDefault() { return _defaultState; }
-        public int getMask() { return _mask; }
-    }
-
     /*
     /**********************************************************
     /* Constants
@@ -84,13 +49,6 @@ public class ProtobufGenerator extends GeneratorBase
      */
 
     final protected IOContext _ioContext;
-
-    /**
-     * Bit flag composed of bits that indicate which
-     * {@link ProtobufGenerator.Feature}s
-     * are enabled.
-     */
-    protected int _protobufFeatures;
 
     protected ProtobufSchema _schema;
 
@@ -164,13 +122,12 @@ public class ProtobufGenerator extends GeneratorBase
     /**********************************************************
      */
 
-    public ProtobufGenerator(IOContext ctxt, int jsonFeatures, int pbFeatures,
+    public ProtobufGenerator(IOContext ctxt, int jsonFeatures,
             ObjectCodec codec, OutputStream output)
         throws IOException
     {
         super(jsonFeatures, codec, BOGUS_WRITE_CONTEXT);
         _ioContext = ctxt;
-        _protobufFeatures = pbFeatures;
         _output = output;
         _pbContext = _rootContext = ProtobufWriteContext.createNullContext();
         _currBuffer = ctxt.allocWriteEncodingBuffer();
@@ -303,35 +260,6 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _pbContext.setField(f);
         _currField = f;
-    }
-
-    /*
-    /**********************************************************
-    /* Extended API, configuration
-    /**********************************************************
-     */
-
-    public ProtobufGenerator enable(Feature f) {
-        _protobufFeatures |= f.getMask();
-        return this;
-    }
-
-    public ProtobufGenerator disable(Feature f) {
-        _protobufFeatures &= ~f.getMask();
-        return this;
-    }
-
-    public final boolean isEnabled(Feature f) {
-        return (_protobufFeatures & f.getMask()) != 0;
-    }
-
-    public ProtobufGenerator configure(Feature f, boolean state) {
-        if (state) {
-            enable(f);
-        } else {
-            disable(f);
-        }
-        return this;
     }
 
     /*
