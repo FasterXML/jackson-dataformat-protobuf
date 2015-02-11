@@ -13,9 +13,26 @@ import com.fasterxml.jackson.core.io.NumberInput;
 import com.fasterxml.jackson.core.json.JsonReadContext;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.core.util.TextBuffer;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 
 public class ProtobufParser extends ParserMinimalBase
 {
+    // State constants
+    
+    // State right after parser created; may start root Object
+    private final static int STATE_INITIAL = 0;
+
+    // State in which we expect another root-object entry key
+    private final static int STATE_ROOT_KEY = 1;
+
+    // State after STATE_ROOT_KEY, when we are about to get a value
+    // (scalar or structured)
+    private final static int STATE_ROOT_VALUE = 2;
+
+    // State after either reaching end-of-input, or getting explicitly closed
+    private final static int STATE_CLOSED = 3;
+    
     /*
     /**********************************************************
     /* Configuration
@@ -26,6 +43,8 @@ public class ProtobufParser extends ParserMinimalBase
      * Codec used for data binding when (if) requested.
      */
     protected ObjectCodec _objectCodec;
+
+    protected ProtobufSchema _schema;
     
     /*
     /**********************************************************
@@ -206,6 +225,16 @@ public class ProtobufParser extends ParserMinimalBase
      */
     protected boolean _tokenIncomplete = false;
 
+    /**
+     * Current state of the parser.
+     */
+    protected int _state = STATE_INITIAL;
+
+    /**
+     * The innermost Object type ("message" in proto lingo) we are handling.
+     */
+    protected ProtobufMessage _currentType;
+    
     /*
     /**********************************************************
     /* Numeric conversions
@@ -292,6 +321,19 @@ public class ProtobufParser extends ParserMinimalBase
 
         _tokenInputRow = -1;
         _tokenInputCol = -1;
+    }
+
+    public void setSchema(ProtobufSchema schema)
+    {
+        if (_schema == schema) {
+            return;
+        }
+        if (_state != STATE_INITIAL) {
+            throw new IllegalStateException("Can not change Schema after parsing has started");
+        }
+        _schema = schema;
+        // start with temporary root...
+//        _currentContext = _rootContext = ProtobufWriteContext.createRootContext(this, schema);
     }
 
     @Override
@@ -397,6 +439,8 @@ public class ProtobufParser extends ParserMinimalBase
     
     @Override
     public void close() throws IOException {
+        _state = STATE_CLOSED;
+        _currToken = null;
         if (!_closed) {
             _closed = true;
             try {
@@ -423,6 +467,25 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
+    @Override
+    public boolean canUseSchema(FormatSchema schema) {
+        return (schema instanceof ProtobufSchema);
+    }
+
+    @Override public ProtobufSchema getSchema() {
+        return _schema;
+    }
+
+    @Override
+    public void setSchema(FormatSchema schema)
+    {
+        if (!(schema instanceof ProtobufSchema)) {
+            throw new IllegalArgumentException("Can not use FormatSchema of type "
+                    +schema.getClass().getName());
+        }
+        setSchema((ProtobufSchema) schema);
+    }
+    
     @Override
     public boolean hasTextCharacters()
     {
@@ -461,6 +524,28 @@ public class ProtobufParser extends ParserMinimalBase
     @Override
     public JsonToken nextToken() throws IOException
     {
+        switch (_state) {
+        case STATE_INITIAL:
+            _currentType = _schema.getRootType();
+            _state = STATE_ROOT_KEY;
+            _parsingContext = _parsingContext.createChildObjectContext(-1, -1);            
+            return (_currToken = JsonToken.START_OBJECT);
+
+        case STATE_ROOT_KEY:
+            // end-of-the-line?
+            if (_inputPtr >= _inputEnd) {
+                if (!loadMore()) {
+                    close();
+                    return null;
+                }
+            }
+            int tag = _decodeTag();
+            
+        case STATE_ROOT_VALUE:
+
+        case STATE_CLOSED:
+            return null;
+        }
         // !!! TBI
         return null;
     }
@@ -1029,4 +1114,80 @@ public class ProtobufParser extends ParserMinimalBase
         }
     }
 
+    /*
+    /**********************************************************
+    /* Decoding
+    /**********************************************************
+     */
+
+    protected int _decodeTag() throws IOException
+    {
+        // offline slow case
+        if ((_inputPtr + 4)  >= _inputEnd) {
+            return _decodeTagSlow();
+        }
+        int v = _inputBuffer[_inputPtr++];
+        if (v < 0) { // keep going
+            v = (v & 0x7F) << 7;
+            
+            // Tag VInts guaranteed to stay in 31 bits, i.e. no more than 5 bytes
+            int ch = _inputBuffer[_inputPtr++];
+            if (ch < 0) {
+                v = (v | (ch & 0x7F)) << 7;
+                ch = _inputBuffer[_inputPtr++];
+                if (ch < 0) {
+                    v = (v | (ch & 0x7F)) << 7;
+                    ch = _inputBuffer[_inputPtr++];
+                    if (ch < 0) {
+                        v = (v | (ch & 0x7F)) << 7;
+
+                        // and now the last byte; at most 3 bits
+                        int last = _inputBuffer[_inputPtr++] & 0xFF;
+                        
+                        if (last > 0x7) {
+                            _reportTooLongVInt(last);
+                        }
+                        v |= last;
+                    } else {
+                        v |= ch;
+                    }
+                } else {
+                    v |= ch;
+                }
+            } else {
+                v |= ch;
+            }
+        }
+        return v;
+    }
+
+    protected int _decodeTagSlow() throws IOException
+    {
+        int v = 0;
+        int i = 0;
+
+        while (true) {
+            v <<= 7;
+            if (_inputPtr >= _inputEnd) {
+                loadMoreGuaranteed();
+            }
+            int ch = _inputBuffer[_inputPtr++];
+            if (++i == 5) { // must end
+                ch &= 0xFF;
+                if (ch > 0x7) {
+                    _reportTooLongVInt(ch);
+                }
+            }
+            if (ch >= 0) {
+                v |= ch;
+                return (v | ch);
+            }
+            v |= (ch & 0x7F);
+        }
+    }
+
+    protected void _reportTooLongVInt(int fifth) throws IOException
+    {
+        _reportError("Too long tag VInt: fifth byte 0x"+Integer.toHexString(fifth));
+    }
 }

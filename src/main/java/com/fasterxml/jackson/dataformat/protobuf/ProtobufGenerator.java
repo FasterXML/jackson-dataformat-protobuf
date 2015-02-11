@@ -184,11 +184,11 @@ public class ProtobufGenerator extends GeneratorBase
     public boolean canUseSchema(FormatSchema schema) {
         return (schema instanceof ProtobufSchema);
     }
-    
+
     @Override public ProtobufSchema getSchema() {
         return _schema;
     }
-    
+
     @Override
     public void setSchema(FormatSchema schema)
     {
@@ -198,13 +198,13 @@ public class ProtobufGenerator extends GeneratorBase
         }
         setSchema((ProtobufSchema) schema);
     }
-    
+
     /*
     /**********************************************************************
     /* Overridden methods; writing field names
     /**********************************************************************
      */
-    
+
     /* And then methods overridden to make final, streamline some
      * aspects...
      */

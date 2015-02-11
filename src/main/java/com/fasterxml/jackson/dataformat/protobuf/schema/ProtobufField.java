@@ -111,11 +111,11 @@ public class ProtobufField
         messageType = msgType;
     }
 
-    public void assignNext(ProtobufField next) {
+    public void assignNext(ProtobufField n) {
         if (this.next != null) {
             throw new IllegalStateException("Can not overwrite 'next' after being set");
         }
-        this.next = next;
+        this.next = n;
     }
 
     public ProtobufMessage getMessageType() {

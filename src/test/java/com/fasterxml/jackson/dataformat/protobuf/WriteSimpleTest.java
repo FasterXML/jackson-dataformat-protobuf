@@ -39,7 +39,7 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(7, bytes[1]); // VInt 7, no zig-zag
         assertEquals(0x10, bytes[2]); // wire type 0 (3 LSB), id of 2 (-> 0x10)
         assertEquals(4, bytes[3]); // VInt 2, but with zig-zag
-}
+    }
 
     public void testWriteCoord() throws Exception
     {

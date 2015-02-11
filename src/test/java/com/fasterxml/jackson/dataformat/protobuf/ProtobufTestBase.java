@@ -110,6 +110,8 @@ abstract class ProtobufTestBase extends TestCase
         public int x;
         public int y;
 
+        protected Point() { }
+        
         public Point(int x, int y) {
             this.x = x;
             this.y = y;
