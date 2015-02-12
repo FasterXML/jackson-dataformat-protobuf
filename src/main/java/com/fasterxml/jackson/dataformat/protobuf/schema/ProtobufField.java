@@ -7,8 +7,13 @@ import java.util.Map;
 import com.fasterxml.jackson.core.SerializableString;
 import com.squareup.protoparser.MessageType.Field;
 
-public class ProtobufField
+public class ProtobufField implements Comparable<ProtobufField>
 {
+    /**
+     * Numeric tag, unshifted
+     */
+    public final int id;
+
     /**
      * Combination of numeric tag and 3-bit wire type.
      */
@@ -79,11 +84,12 @@ public class ProtobufField
         messageType = msg;
 
         if (nativeField == null) { // for "unknown" field
-            typedTag = 0;
+            typedTag = id = 0;
             repeated = required = deprecated = packed = false;
             name = "UNKNOWN";
         } else {
-            typedTag = (nativeField.getTag() << 3) + wireType;
+            id = nativeField.getTag();
+            typedTag = (id << 3) + wireType;
             name = nativeField.getName();
             switch (nativeField.getLabel()) {
             case REPEATED:
@@ -137,6 +143,10 @@ public class ProtobufField
         return enumValues.keySet();
     }
 
+    public int getId() {
+        return id;
+    }
+    
     public boolean isObject() {
         return isObject;
     }
@@ -145,9 +155,18 @@ public class ProtobufField
         return repeated;
     }
 
+    public boolean isValidFor(int typeTag) {
+        return (typeTag == type.getWireType());
+    }
+
     @Override
     public String toString() // for debugging
     {
         return "Field '"+name+"', tag="+typedTag+", wireType="+wireType+", fieldType="+type;
+    }
+
+    @Override
+    public int compareTo(ProtobufField other) {
+        return id - other.id;
     }
 }

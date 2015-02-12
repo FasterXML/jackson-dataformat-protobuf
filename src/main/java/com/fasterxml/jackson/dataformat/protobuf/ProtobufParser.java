@@ -13,8 +13,7 @@ import com.fasterxml.jackson.core.io.NumberInput;
 import com.fasterxml.jackson.core.json.JsonReadContext;
 import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.core.util.TextBuffer;
-import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
-import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
+import com.fasterxml.jackson.dataformat.protobuf.schema.*;
 
 public class ProtobufParser extends ParserMinimalBase
 {
@@ -30,8 +29,11 @@ public class ProtobufParser extends ParserMinimalBase
     // (scalar or structured)
     private final static int STATE_ROOT_VALUE = 2;
 
+    // Alternative follow-state for STATE_ROOT_KEY, when skipping over content
+    private final static int STATE_SKIP_ROOT_VALUE = 3;
+    
     // State after either reaching end-of-input, or getting explicitly closed
-    private final static int STATE_CLOSED = 3;
+    private final static int STATE_CLOSED = 4;
     
     /*
     /**********************************************************
@@ -233,8 +235,12 @@ public class ProtobufParser extends ParserMinimalBase
     /**
      * The innermost Object type ("message" in proto lingo) we are handling.
      */
-    protected ProtobufMessage _currentType;
-    
+    protected ProtobufMessage _currentMessage;
+
+    protected ProtobufField _currentField;
+
+    protected int _currentType;
+
     /*
     /**********************************************************
     /* Numeric conversions
@@ -526,7 +532,7 @@ public class ProtobufParser extends ParserMinimalBase
     {
         switch (_state) {
         case STATE_INITIAL:
-            _currentType = _schema.getRootType();
+            _currentMessage = _schema.getRootType();
             _state = STATE_ROOT_KEY;
             _parsingContext = _parsingContext.createChildObjectContext(-1, -1);            
             return (_currToken = JsonToken.START_OBJECT);
@@ -539,15 +545,138 @@ public class ProtobufParser extends ParserMinimalBase
                     return null;
                 }
             }
-            int tag = _decodeTag();
+            {
+                int tag = _decodeTag();
+                int wireType = (tag & 0x7);
+                _currentType = wireType;
+                // Note: may be null; if so, value needs to be skipped
+                _currentField = _currentMessage.field(tag >> 3);
+                if (_currentField == null) {
+                    return _skipUnknownAtRoot(wireType);
+                }
+                _parsingContext.setCurrentName(_currentField.name);
+                _state = STATE_ROOT_VALUE;
+                // otherwise quickly validate compatibility
+                if (!_currentField.isValidFor(wireType)) {
+                    _reportIncompatibleType(_currentField, wireType);
+                }
+            }
+
+            return (_currToken = JsonToken.FIELD_NAME);
             
         case STATE_ROOT_VALUE:
+            JsonToken t = _readNextValue(_currentField.type);
+            _currToken = t;
+            return t;
 
+        case STATE_SKIP_ROOT_VALUE:
+            
         case STATE_CLOSED:
             return null;
         }
         // !!! TBI
         return null;
+    }
+
+    private JsonToken _readNextValue(FieldType t) throws IOException
+    {
+        switch (_currentField.type) {
+        case DOUBLE:
+            _numberDouble = Double.longBitsToDouble(_decodeLong());
+            _numTypesValid = NR_DOUBLE;
+            return JsonToken.VALUE_NUMBER_FLOAT;
+                
+        case FLOAT:
+            _numberDouble = (double) Float.intBitsToFloat(_decodeInt());
+            _numTypesValid = NR_DOUBLE;
+            return JsonToken.VALUE_NUMBER_FLOAT;
+
+        case VINT32_Z:
+            _numberInt = ProtobufUtil.zigzagDecode(_decodeVInt());
+            _numTypesValid = NR_INT;
+            return JsonToken.VALUE_NUMBER_INT;
+
+        case VINT64_Z:
+            _numberLong = ProtobufUtil.zigzagDecode(_decodeVLong());
+            _numTypesValid = NR_LONG;
+            return JsonToken.VALUE_NUMBER_INT;
+
+        case VINT32_STD:
+            _numberInt = _decodeVInt();
+            _numTypesValid = NR_INT;
+            return JsonToken.VALUE_NUMBER_INT;
+
+        case VINT64_STD:
+            _numberLong = _decodeVLong();
+            _numTypesValid = NR_LONG;
+            return JsonToken.VALUE_NUMBER_INT;
+
+        case FIXINT32:
+            _numberInt = _decodeInt();
+            _numTypesValid = NR_INT;
+            return JsonToken.VALUE_NUMBER_INT;
+
+        case FIXINT64:
+            _numberLong = _decodeLong();
+            _numTypesValid = NR_LONG;
+            return JsonToken.VALUE_NUMBER_INT;
+
+        case BOOLEAN:
+            if (_inputPtr >= _inputEnd) {
+                loadMoreGuaranteed();
+            }
+            {
+                int i = _inputBuffer[_inputPtr++];
+                // let's be strict here
+                if (i == 1) {
+                    return JsonToken.VALUE_TRUE; 
+                }
+                if (i == 0) {
+                    return JsonToken.VALUE_FALSE; 
+                }
+                _reportError(String.format("Invalid byte value for bool field %s: 0x%2x; should be either 0x0 or 0x1",
+                        _currentField.name, i));
+            }
+        
+        case STRING:
+        case BYTES:
+        case ENUM:
+        case MESSAGE:
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    private int _decodeInt() throws IOException
+    {
+        return 0;
+    }
+
+    private int _decodeVInt() throws IOException
+    {
+        return 0;
+    }
+
+    private long _decodeLong() throws IOException
+    {
+        return 0L;
+    }
+
+    private long _decodeVLong() throws IOException
+    {
+        return 0L;
+    }
+    
+    private JsonToken _skipUnknownAtRoot(int currType)
+    {
+        // !!! TBI
+        throw new IllegalStateException("Skipping not yet implemented");
+    }
+
+    private void _reportIncompatibleType(ProtobufField field, int wireType) throws IOException
+    {
+        _reportError(String.format
+                ("Incompatible wire type (0x%x) for field '%s': not valid for field of type %s (expected 0x%x)",
+                        wireType, field.name, field.type, field.type.getWireType()));
     }
 
     /*
