@@ -28,6 +28,12 @@ public class ReadSimpleTest extends ProtobufTestBase
         // 6 bytes: 1 byte tags, 2 byte values
         assertEquals(6, bytes.length);
 
+        /*
+for (int i = 0; i < bytes.length; ++i) {
+    System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
+}
+*/
+        
         // but more importantly, try to parse
         Point result = MAPPER.reader(Point.class).with(schema).readValue(bytes);
         assertNotNull(result);

@@ -530,6 +530,17 @@ public class ProtobufParser extends ParserMinimalBase
     @Override
     public JsonToken nextToken() throws IOException
     {
+        _numTypesValid = NR_UNKNOWN;
+        // For longer tokens (text, binary), we'll only read when requested
+        /*
+        if (_tokenIncomplete) {
+            _skipIncomplete();
+        }
+        */
+        _tokenInputTotal = _currInputProcessed + _inputPtr;
+        // also: clear any data retained so far
+        _binaryValue = null;
+
         switch (_state) {
         case STATE_INITIAL:
             _currentMessage = _schema.getRootType();
@@ -546,7 +557,8 @@ public class ProtobufParser extends ParserMinimalBase
                 }
             }
             {
-                int tag = _decodeTag();
+                int tag = _decodeVInt();
+                
                 int wireType = (tag & 0x7);
                 _currentType = wireType;
                 // Note: may be null; if so, value needs to be skipped
@@ -582,12 +594,12 @@ public class ProtobufParser extends ParserMinimalBase
     {
         switch (_currentField.type) {
         case DOUBLE:
-            _numberDouble = Double.longBitsToDouble(_decodeLong());
+            _numberDouble = Double.longBitsToDouble(_decode64Bits());
             _numTypesValid = NR_DOUBLE;
             return JsonToken.VALUE_NUMBER_FLOAT;
                 
         case FLOAT:
-            _numberDouble = (double) Float.intBitsToFloat(_decodeInt());
+            _numberDouble = (double) Float.intBitsToFloat(_decode32Bits());
             _numTypesValid = NR_DOUBLE;
             return JsonToken.VALUE_NUMBER_FLOAT;
 
@@ -612,12 +624,12 @@ public class ProtobufParser extends ParserMinimalBase
             return JsonToken.VALUE_NUMBER_INT;
 
         case FIXINT32:
-            _numberInt = _decodeInt();
+            _numberInt = _decode32Bits();
             _numTypesValid = NR_INT;
             return JsonToken.VALUE_NUMBER_INT;
 
         case FIXINT64:
-            _numberLong = _decodeLong();
+            _numberLong = _decode64Bits();
             _numTypesValid = NR_LONG;
             return JsonToken.VALUE_NUMBER_INT;
 
@@ -645,38 +657,11 @@ public class ProtobufParser extends ParserMinimalBase
         }
         throw new UnsupportedOperationException();
     }
-
-    private int _decodeInt() throws IOException
-    {
-        return 0;
-    }
-
-    private int _decodeVInt() throws IOException
-    {
-        return 0;
-    }
-
-    private long _decodeLong() throws IOException
-    {
-        return 0L;
-    }
-
-    private long _decodeVLong() throws IOException
-    {
-        return 0L;
-    }
     
     private JsonToken _skipUnknownAtRoot(int currType)
     {
         // !!! TBI
         throw new IllegalStateException("Skipping not yet implemented");
-    }
-
-    private void _reportIncompatibleType(ProtobufField field, int wireType) throws IOException
-    {
-        _reportError(String.format
-                ("Incompatible wire type (0x%x) for field '%s': not valid for field of type %s (expected 0x%x)",
-                        wireType, field.name, field.type, field.type.getWireType()));
     }
 
     /*
@@ -1245,78 +1230,256 @@ public class ProtobufParser extends ParserMinimalBase
 
     /*
     /**********************************************************
-    /* Decoding
+    /* Helper methods, decoding
     /**********************************************************
      */
 
-    protected int _decodeTag() throws IOException
+    private int _decodeVInt() throws IOException
     {
-        // offline slow case
-        if ((_inputPtr + 4)  >= _inputEnd) {
-            return _decodeTagSlow();
+        int ptr = _inputPtr;
+        // 5 x 7 = 35 bits -> all we need is 32
+        if ((ptr + 5) > _inputEnd) {
+            return _decodeVIntSlow();
         }
-        int v = _inputBuffer[_inputPtr++];
-        if (v < 0) { // keep going
-            v = (v & 0x7F) << 7;
-            
-            // Tag VInts guaranteed to stay in 31 bits, i.e. no more than 5 bytes
-            int ch = _inputBuffer[_inputPtr++];
-            if (ch < 0) {
-                v = (v | (ch & 0x7F)) << 7;
-                ch = _inputBuffer[_inputPtr++];
-                if (ch < 0) {
-                    v = (v | (ch & 0x7F)) << 7;
-                    ch = _inputBuffer[_inputPtr++];
-                    if (ch < 0) {
-                        v = (v | (ch & 0x7F)) << 7;
 
-                        // and now the last byte; at most 3 bits
-                        int last = _inputBuffer[_inputPtr++] & 0xFF;
+        final byte[] buf = _inputBuffer;
+        int v = buf[ptr++];
+
+        if (v < 0) { // keep going
+            v &= 0x7F;
+            // Tag VInts guaranteed to stay in 32 bits, i.e. no more than 5 bytes
+            int ch = buf[ptr++];
+            if (ch < 0) {
+                v |= ((ch & 0x7F) << 7);
+                ch = buf[ptr++];
+                if (ch < 0) {
+                    v |= ((ch & 0x7F) << 14);
+                    ch = buf[ptr++];
+                    if (ch < 0) {
+                        v |= ((ch & 0x7F) << 21);
+
+                        // and now the last byte; at most 4 bits
+                        int last = buf[ptr++] & 0xFF;
                         
-                        if (last > 0x7) {
+                        if (last > 0x1F) { // should have at most 5 one bits
+                            _inputPtr = ptr;
                             _reportTooLongVInt(last);
                         }
-                        v |= last;
+                        v |= (last << 28);
                     } else {
-                        v |= ch;
+                        v |= (ch << 21);
                     }
                 } else {
-                    v |= ch;
+                    v |= (ch << 14);
                 }
             } else {
-                v |= ch;
+                v |= (ch << 7);
             }
         }
+        _inputPtr = ptr;
         return v;
     }
 
-    protected int _decodeTagSlow() throws IOException
+    protected int _decodeVIntSlow() throws IOException
     {
         int v = 0;
-        int i = 0;
+        int shift = 0;
 
         while (true) {
-            v <<= 7;
             if (_inputPtr >= _inputEnd) {
                 loadMoreGuaranteed();
             }
             int ch = _inputBuffer[_inputPtr++];
-            if (++i == 5) { // must end
+            if (shift >= 35) { // must end
                 ch &= 0xFF;
-                if (ch > 0x7) {
+                if (ch > 0x1F) { // should have at most 5 one bits
                     _reportTooLongVInt(ch);
                 }
             }
             if (ch >= 0) {
-                v |= ch;
-                return (v | ch);
+                return v | (ch << shift);
             }
-            v |= (ch & 0x7F);
+            v |= ((ch & 0x7f) << shift);
+            shift += 7;
         }
     }
-
-    protected void _reportTooLongVInt(int fifth) throws IOException
+    
+    private long _decodeVLong() throws IOException
     {
+        // 10 x 7 = 70 bits -> all we need is 64
+        if ((_inputPtr + 10) > _inputEnd) {
+            return _decodeVLongSlow();
+        }
+        final byte[] buf = _inputBuffer;
+
+        // First things first: can start by accumulating as int, first 4 bytes
+
+        int v = buf[_inputPtr++];
+        if (v >= 0) {
+            return v;
+        }
+        int ch = buf[_inputPtr++];
+        if (ch < 0) {
+            return v | (ch << 7);
+        }
+        v |= ((ch & 0x7F) << 7);
+        ch = buf[_inputPtr++];
+        if (ch < 0) {
+            return v | (ch << 14);
+        }
+        v |= ((ch & 0x7F) << 14);
+        ch = buf[_inputPtr++];
+        if (ch < 0) {
+            return v | (ch << 21);
+        }
+        v |= ((ch & 0x7F) << 21);
+
+        // 4 bytes gotten. How about 4 more?
+        long l = (long) v;
+
+        v = buf[_inputPtr++];
+        if (v >= 0) {
+            return (((long) v) << 28) | l;
+        }
+        v &= 0x7F;
+        ch = buf[_inputPtr++];
+        if (ch < 0) {
+            long l2 = (v | (ch << 7));
+            return (l2 << 28) | l;
+        }
+        v |= ((ch & 0x7F) << 7);
+        ch = buf[_inputPtr++];
+        if (ch < 0) {
+            long l2 = (v | (ch << 14));
+            return (l2 << 28) | l;
+        }
+        v |= ((ch & 0x7F) << 14);
+        ch = buf[_inputPtr++];
+        if (ch < 0) {
+            return v | (ch << 21);
+        }
+        v |= ((ch & 0x7F) << 21);
+
+        // So far so good. Possibly 2 more bytes to get and we are done
+        l |= (((long) v) << 28);
+
+        v = buf[_inputPtr++];
+        if (v >= 0) {
+            return (((long) v) << 56) | l;
+        }
+        v &= 0x7F;
+        ch = buf[_inputPtr++] & 0xFF;
+        if (ch > 0x1) { // error; should have at most 1 bit at the last value
+            _reportTooLongVInt(ch);
+        }
+        v |= ((ch & 0x7F) << 7);
+
+        return (((long) v) << 56) | l;
+    }
+
+    protected long _decodeVLongSlow() throws IOException
+    {
+        // since only called rarely, no need to optimize int vs long
+        long v = 0;
+        int shift = 0;
+
+        while (true) {
+            if (_inputPtr >= _inputEnd) {
+                loadMoreGuaranteed();
+            }
+            int ch = _inputBuffer[_inputPtr++];
+            if (shift >= 63) { // must end
+                ch &= 0xFF;
+                if (ch > 0x1) { // at most a single bit here
+                    _reportTooLongVLong(ch);
+                }
+            }
+            if (ch >= 0) {
+                long l = (long) ch;
+                return v | (l << shift);
+            }
+            ch &= 0x7F;
+            long l = (long) ch;
+            v |= (l << shift);
+            shift += 7;
+        }
+    }
+    
+    protected final int _decode32Bits() throws IOException {
+        int ptr = _inputPtr;
+        if ((ptr + 3) >= _inputEnd) {
+            return _slow32();
+        }
+        final byte[] b = _inputBuffer;
+        int v = (b[ptr] & 0xFF) + ((b[ptr+1]) << 8)
+                + ((b[ptr+2] & 0xFF) << 16) + (b[ptr+3] << 24);
+        _inputPtr = ptr+4;
+        return v;
+    }
+
+    protected final int _slow32() throws IOException {
+        if (_inputPtr >= _inputEnd) {
+            loadMoreGuaranteed();
+        }
+        int v = _inputBuffer[_inputPtr++] & 0xFF;
+        if (_inputPtr >= _inputEnd) {
+            loadMoreGuaranteed();
+        }
+        v |= ((_inputBuffer[_inputPtr++] & 0xFF) << 8);
+        if (_inputPtr >= _inputEnd) {
+            loadMoreGuaranteed();
+        }
+        v |= ((_inputBuffer[_inputPtr++] & 0xFF) << 16);
+        if (_inputPtr >= _inputEnd) {
+            loadMoreGuaranteed();
+        }
+        return v | (_inputBuffer[_inputPtr++] << 24); // sign will shift away
+    }
+
+    protected final long _decode64Bits() throws IOException {
+        int ptr = _inputPtr;
+        if ((ptr + 7) >= _inputEnd) {
+            return _slow64();
+        }
+        final byte[] b = _inputBuffer;
+        int i1 = (b[ptr++] & 0xFF) | ((b[ptr++] & 0xFF) << 8)
+                | ((b[ptr++] & 0xFF) << 16) | (b[ptr++] << 24);
+        int i2 = (b[ptr++] & 0xFF) | ((b[ptr++] & 0xFF) << 8)
+                | ((b[ptr++] & 0xFF) << 16) | (b[ptr++] << 24);
+        _inputPtr = ptr;
+        return _long(i1, i2);
+    }
+
+    protected final long _slow64() throws IOException {
+        return _long(_decode32Bits(), _decode32Bits());
+    }
+
+    protected final static long _long(int i1, int i2)
+    {
+        long l1 = i1;
+        long l2 = i2;
+        l2 = (l2 << 32) >>> 32;
+        return (l1 << 32) + l2;
+    }
+
+    /*
+    /**********************************************************
+    /* Helper methods, error reporting
+    /**********************************************************
+     */
+
+    private void _reportIncompatibleType(ProtobufField field, int wireType) throws IOException
+    {
+        _reportError(String.format
+                ("Incompatible wire type (0x%x) for field '%s': not valid for field of type %s (expected 0x%x)",
+                        wireType, field.name, field.type, field.type.getWireType()));
+    }
+
+    protected void _reportTooLongVInt(int fifth) throws IOException {
         _reportError("Too long tag VInt: fifth byte 0x"+Integer.toHexString(fifth));
+    }
+
+    protected void _reportTooLongVLong(int fifth) throws IOException {
+        _reportError("Too long tag VLong: tenth byte 0x"+Integer.toHexString(fifth));
     }
 }
