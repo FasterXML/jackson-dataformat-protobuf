@@ -28,12 +28,6 @@ public class ReadSimpleTest extends ProtobufTestBase
         // 6 bytes: 1 byte tags, 2 byte values
         assertEquals(6, bytes.length);
 
-        /*
-for (int i = 0; i < bytes.length; ++i) {
-    System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
-}
-*/
-        
         // but more importantly, try to parse
         Point result = MAPPER.reader(Point.class).with(schema).readValue(bytes);
         assertNotNull(result);
@@ -41,4 +35,26 @@ for (int i = 0; i < bytes.length; ++i) {
         assertEquals(input.y, result.y);
     }
 
+    public void testReadName() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
+        final ObjectWriter w = MAPPER.writerFor(Name.class)
+                .with(schema);
+        Name input = new Name("Billy", "Baco\u00F1");
+
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+
+        // 6 bytes: 1 byte tags, 2 byte values
+        assertEquals(15, bytes.length);
+
+for (int i = 0; i < bytes.length; ++i) {
+    System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
+}
+
+        Name result = MAPPER.reader(Name.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+        assertEquals(input.first, result.first);
+        assertEquals(input.last, result.last);
+    }
 }

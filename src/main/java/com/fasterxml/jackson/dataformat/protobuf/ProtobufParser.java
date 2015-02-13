@@ -1,8 +1,6 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
@@ -34,6 +32,8 @@ public class ProtobufParser extends ParserMinimalBase
     
     // State after either reaching end-of-input, or getting explicitly closed
     private final static int STATE_CLOSED = 4;
+
+    private final static int[] UTF8_UNIT_CODES = ProtobufUtil.sUtf8UnitLengths;
     
     /*
     /**********************************************************
@@ -241,6 +241,8 @@ public class ProtobufParser extends ParserMinimalBase
 
     protected int _currentType;
 
+    protected int _currentLength;
+    
     /*
     /**********************************************************
     /* Numeric conversions
@@ -532,11 +534,10 @@ public class ProtobufParser extends ParserMinimalBase
     {
         _numTypesValid = NR_UNKNOWN;
         // For longer tokens (text, binary), we'll only read when requested
-        /*
         if (_tokenIncomplete) {
-            _skipIncomplete();
+            _tokenIncomplete = false;
+            _skipBytes(_currentLength);
         }
-        */
         _tokenInputTotal = _currInputProcessed + _inputPtr;
         // also: clear any data retained so far
         _binaryValue = null;
@@ -564,6 +565,7 @@ public class ProtobufParser extends ParserMinimalBase
                 // Note: may be null; if so, value needs to be skipped
                 _currentField = _currentMessage.field(tag >> 3);
                 if (_currentField == null) {
+System.err.println("Unknown field, tag "+(tag >> 3)+", type "+(tag & 0x7)+", byte 0x"+Integer.toHexString(tag));
                     return _skipUnknownAtRoot(wireType);
                 }
                 _parsingContext.setCurrentName(_currentField.name);
@@ -662,21 +664,100 @@ public class ProtobufParser extends ParserMinimalBase
             }
             break;
 
-        default:
         case STRING:
+            {
+                int len = _decodeLength();
+                _currentLength = len;            
+                if (len == 0) {
+                    _textBuffer.resetWithEmpty();
+                } else {
+                    _tokenIncomplete = true;
+                }
+            }
+            type = JsonToken.VALUE_STRING;
+            break;
+
         case BYTES:
+            {
+                int len = _decodeLength();
+                _currentLength = len;            
+                if (len == 0) {
+                    _binaryValue = ByteArrayBuilder.NO_BYTES;
+                } else {
+                    _tokenIncomplete = true;
+                }
+            }
+            type = JsonToken.VALUE_EMBEDDED_OBJECT;
+            break;
+
         case ENUM:
+            // 12-Feb-2015, tatu: Can expose as index (int) or name, but internally encoded as VInt.
+            //    So for now, expose as is; may add a feature to choose later on.
+            _numberInt = _decodeLength();
+            _numTypesValid = NR_INT;
+            type =  JsonToken.VALUE_NUMBER_INT;
+            break;
+            
         case MESSAGE:
+        default:
             throw new UnsupportedOperationException("Type "+_currentField.type+" not yet supported");
         }
         _state = STATE_ROOT_KEY;
         return type;
     }
-    
-    private JsonToken _skipUnknownAtRoot(int currType)
+
+    private JsonToken _skipUnknownAtRoot(int wireType) throws IOException
     {
-        // !!! TBI
-        throw new IllegalStateException("Skipping not yet implemented");
+        while (true) {
+            _skipUnknownAtRoot2(wireType);
+
+            // end-of-the-line?
+            if (_inputPtr >= _inputEnd) {
+                if (!loadMore()) {
+                    close();
+                    return null;
+                }
+            }
+            int tag = _decodeVInt();
+            
+            wireType = (tag & 0x7);
+            _currentType = wireType;
+            // Note: may be null; if so, value needs to be skipped
+            _currentField = _currentMessage.field(tag >> 3);
+            if (_currentField == null) {
+                _skipUnknownAtRoot2(wireType);
+                continue;
+            }
+            _parsingContext.setCurrentName(_currentField.name);
+            _state = STATE_ROOT_VALUE;
+            // otherwise quickly validate compatibility
+            if (!_currentField.isValidFor(wireType)) {
+                _reportIncompatibleType(_currentField, wireType);
+            }
+            return (_currToken = JsonToken.FIELD_NAME);
+        }
+    }
+        
+    private void _skipUnknownAtRoot2(int wireType) throws IOException
+    {
+        switch (wireType) {
+        case WireType.VINT:
+            _skipVInt();
+            break;
+        case WireType.FIXED_32BIT:
+            _skipBytes(4);
+            break;
+        case WireType.FIXED_64BIT:
+            _skipBytes(64);
+            break;
+        case WireType.LENGTH_PREFIXED:
+            int len = _decodeLength();
+            _skipBytes(len);
+            break;
+        default:
+            _reportError(String.format("Unrecognized wire type 0x%x for unknown field within message of type %s)",
+                    wireType, _currentMessage.getName()));
+        }
     }
 
     /*
@@ -1148,7 +1229,218 @@ public class ProtobufParser extends ParserMinimalBase
      */
     protected void _finishToken() throws IOException
     {
-        // !!! TBI
+        final int len = _currentLength;
+        
+        if (_currToken == JsonToken.VALUE_STRING) {
+            if (len > (_inputEnd - _inputPtr)) {
+System.err.println(" finish text, len "+len+", at "+_inputPtr+" (end "+_inputEnd+")");   
+                // or if not, could we read?
+                if (len >= _inputBuffer.length) {
+                    // If not enough space, need handling similar to chunked
+                    _finishLongText(len);
+                    return;
+                }
+                _loadToHaveAtLeast(len);
+            }
+            // offline for better optimization
+            _finishShortText(len);
+
+System.err.println(" Text '"+getText()+"'");            
+            return;
+        }
+        if (_currToken == JsonToken.VALUE_EMBEDDED_OBJECT) {
+            _binaryValue = _finishBytes(len);
+            return;
+        }
+        // should never happen but:
+        _throwInternal();
+    }
+
+    @SuppressWarnings("resource")
+    protected byte[] _finishBytes(int len) throws IOException
+    {
+        byte[] b = new byte[len];
+        if (_inputPtr >= _inputEnd) {
+            loadMoreGuaranteed();
+        }
+        int ptr = 0;
+        while (true) {
+            int toAdd = Math.min(len, _inputEnd - _inputPtr);
+            System.arraycopy(_inputBuffer, _inputPtr, b, ptr, toAdd);
+            _inputPtr += toAdd;
+            ptr += toAdd;
+            len -= toAdd;
+            if (len <= 0) {
+                return b;
+            }
+            loadMoreGuaranteed();
+        }
+    }
+
+    private final String _finishShortText(int len) throws IOException
+    {
+        char[] outBuf = _textBuffer.emptyAndGetCurrentSegment();
+        if (outBuf.length < len) { // one minor complication
+            outBuf = _textBuffer.expandCurrentSegment(len);
+        }
+        
+        int outPtr = 0;
+        int inPtr = _inputPtr;
+        _inputPtr += len;
+        final byte[] inputBuf = _inputBuffer;
+
+        // Let's actually do a tight loop for ASCII first:
+        final int end = inPtr + len;
+
+        int i;
+        while ((i = inputBuf[inPtr]) >= 0) {
+            outBuf[outPtr++] = (char) i;
+            if (++inPtr == end) {
+                return _textBuffer.setCurrentAndReturn(outPtr);
+            }
+        }
+
+        final int[] codes = UTF8_UNIT_CODES;
+        do {
+            i = inputBuf[inPtr++] & 0xFF;
+            switch (codes[i]) {
+            case 0:
+                break;
+            case 1:
+                i = ((i & 0x1F) << 6) | (inputBuf[inPtr++] & 0x3F);
+                break;
+            case 2:
+                i = ((i & 0x0F) << 12)
+                   | ((inputBuf[inPtr++] & 0x3F) << 6)
+                   | (inputBuf[inPtr++] & 0x3F);
+                break;
+            case 3:
+                i = ((i & 0x07) << 18)
+                 | ((inputBuf[inPtr++] & 0x3F) << 12)
+                 | ((inputBuf[inPtr++] & 0x3F) << 6)
+                 | (inputBuf[inPtr++] & 0x3F);
+                // note: this is the codepoint value; need to split, too
+                i -= 0x10000;
+                outBuf[outPtr++] = (char) (0xD800 | (i >> 10));
+                i = 0xDC00 | (i & 0x3FF);
+                break;
+            default: // invalid
+                _reportError("Invalid byte "+Integer.toHexString(i)+" in Unicode text block");
+            }
+            outBuf[outPtr++] = (char) i;
+        } while (inPtr < end);
+        return _textBuffer.setCurrentAndReturn(outPtr);
+    }
+
+    private final void _finishLongText(int len) throws IOException
+    {
+        char[] outBuf = _textBuffer.emptyAndGetCurrentSegment();
+        int outPtr = 0;
+        final int[] codes = UTF8_UNIT_CODES;
+        int outEnd = outBuf.length;
+
+        while (--len >= 0) {
+            int c = _nextByte() & 0xFF;
+            int code = codes[c];
+            if (code == 0 && outPtr < outEnd) {
+                outBuf[outPtr++] = (char) c;
+                continue;
+            }
+            if ((len -= code) < 0) { // may need to improve error here but...
+                throw _constructError("Malformed UTF-8 character at end of long (non-chunked) text segment");
+            }
+            
+            switch (code) {
+            case 0:
+                break;
+            case 1: // 2-byte UTF
+                {
+                    int d = _nextByte();
+                    if ((d & 0xC0) != 0x080) {
+                        _reportInvalidOther(d & 0xFF, _inputPtr);
+                    }
+                    c = ((c & 0x1F) << 6) | (d & 0x3F);
+                }
+                break;
+            case 2: // 3-byte UTF
+                c = _decodeUTF8_3(c);
+                break;
+            case 3: // 4-byte UTF
+                c = _decodeUTF8_4(c);
+                // Let's add first part right away:
+                outBuf[outPtr++] = (char) (0xD800 | (c >> 10));
+                if (outPtr >= outBuf.length) {
+                    outBuf = _textBuffer.finishCurrentSegment();
+                    outPtr = 0;
+                    outEnd = outBuf.length;
+                }
+                c = 0xDC00 | (c & 0x3FF);
+                // And let the other char output down below
+                break;
+            default:
+                // Is this good enough error message?
+                _reportInvalidChar(c);
+            }
+            // Need more room?
+            if (outPtr >= outEnd) {
+                outBuf = _textBuffer.finishCurrentSegment();
+                outPtr = 0;
+                outEnd = outBuf.length;
+            }
+            // Ok, let's add char to output:
+            outBuf[outPtr++] = (char) c;
+        }
+        _textBuffer.setCurrentLength(outPtr);
+    }
+
+    private final int _decodeUTF8_3(int c1) throws IOException
+    {
+        c1 &= 0x0F;
+        int d = _nextByte();
+        if ((d & 0xC0) != 0x080) {
+            _reportInvalidOther(d & 0xFF, _inputPtr);
+        }
+        int c = (c1 << 6) | (d & 0x3F);
+        d = _nextByte();
+        if ((d & 0xC0) != 0x080) {
+            _reportInvalidOther(d & 0xFF, _inputPtr);
+        }
+        c = (c << 6) | (d & 0x3F);
+        return c;
+    }
+    
+    /**
+     * @return Character value <b>minus 0x10000</c>; this so that caller
+     *    can readily expand it to actual surrogates
+     */
+    private final int _decodeUTF8_4(int c) throws IOException
+    {
+        int d = _nextByte();
+        if ((d & 0xC0) != 0x080) {
+            _reportInvalidOther(d & 0xFF, _inputPtr);
+        }
+        c = ((c & 0x07) << 6) | (d & 0x3F);
+        d = _nextByte();
+        if ((d & 0xC0) != 0x080) {
+            _reportInvalidOther(d & 0xFF, _inputPtr);
+        }
+        c = (c << 6) | (d & 0x3F);
+        d = _nextByte();
+        if ((d & 0xC0) != 0x080) {
+            _reportInvalidOther(d & 0xFF, _inputPtr);
+        }
+        return ((c << 6) | (d & 0x3F)) - 0x10000;
+    }
+    
+    private final int _nextByte() throws IOException {
+        int inPtr = _inputPtr;
+        if (inPtr < _inputEnd) {
+            int ch = _inputBuffer[inPtr];
+            _inputPtr = inPtr+1;
+            return ch;
+        }
+        loadMoreGuaranteed();
+        return _inputBuffer[_inputPtr++];
     }
 
     /*
@@ -1245,6 +1537,62 @@ public class ProtobufParser extends ParserMinimalBase
 
     /*
     /**********************************************************
+    /* Helper methods, skipping
+    /**********************************************************
+     */
+
+    protected void _skipBytes(int len) throws IOException
+    {
+        while (true) {
+            int toAdd = Math.min(len, _inputEnd - _inputPtr);
+            _inputPtr += toAdd;
+            len -= toAdd;
+            if (len <= 0) {
+                return;
+            }
+            loadMoreGuaranteed();
+        }
+    }
+
+    protected void _skipVInt() throws IOException
+    {
+        int ptr = _inputPtr;
+        if ((ptr + 10) > _inputEnd) {
+            _skipVIntSlow();
+            return;
+        }
+        final byte[] buf = _inputBuffer;
+        // inline checks for first 4 bytes
+        if ((buf[ptr++] >= 0) || (buf[ptr++] >= 0) || (buf[ptr++] >= 0) || (buf[ptr++] >= 0)) {
+            _inputPtr = ptr;
+            return;
+        }
+        // but loop beyond
+        for (int end = ptr+6; ptr < end; ++ptr) {
+            if (buf[ptr] >= 0) {
+                _inputPtr = ptr;
+                return;
+            }
+        }
+        _reportTooLongVInt(buf[ptr-1]);
+    }
+
+    protected void _skipVIntSlow() throws IOException
+    {
+        for (int i = 0; i < 10; ++i) {
+            if (_inputPtr >= _inputEnd) {
+                loadMoreGuaranteed();
+            }
+            int ch = _inputBuffer[_inputPtr++];
+            if (ch >= 0) {
+                return;
+            }
+        }
+        _reportTooLongVInt(_inputBuffer[_inputPtr-1]);
+    }
+    
+    /*
+    /**********************************************************
     /* Helper methods, decoding
     /**********************************************************
      */
@@ -1295,6 +1643,61 @@ public class ProtobufParser extends ParserMinimalBase
         return v;
     }
 
+    // Similar to '_decodeVInt()', but also ensure that no
+    // negative values allowed
+    private int _decodeLength() throws IOException
+    {
+        int ptr = _inputPtr;
+
+        if ((ptr + 5) > _inputEnd) {
+            int v = _decodeVIntSlow();
+            if (v < 0) {
+                _reportInvalidLength(v);
+            }
+            return v;
+        }
+
+        final byte[] buf = _inputBuffer;
+        int v = buf[ptr++];
+        
+        if (v < 0) { // keep going
+            v &= 0x7F;
+            // Tag VInts guaranteed to stay in 32 bits, i.e. no more than 5 bytes
+            int ch = buf[ptr++];
+            if (ch < 0) {
+                v |= ((ch & 0x7F) << 7);
+                ch = buf[ptr++];
+                if (ch < 0) {
+                    v |= ((ch & 0x7F) << 14);
+                    ch = buf[ptr++];
+                    if (ch < 0) {
+                        v |= ((ch & 0x7F) << 21);
+
+                        // and now the last byte; at most 4 bits
+                        int last = buf[ptr++] & 0xFF;
+                        
+                        if (last > 0x1F) { // should have at most 5 one bits
+                            _inputPtr = ptr;
+                            _reportTooLongVInt(last);
+                        }
+                        v |= (last << 28);
+                    } else {
+                        v |= (ch << 21);
+                    }
+                } else {
+                    v |= (ch << 14);
+                }
+            } else {
+                v |= (ch << 7);
+            }
+        }
+        _inputPtr = ptr;
+        if (v < 0) {
+            _reportInvalidLength(v);
+        }
+        return v;
+    }
+    
     protected int _decodeVIntSlow() throws IOException
     {
         int v = 0;
@@ -1490,11 +1893,36 @@ public class ProtobufParser extends ParserMinimalBase
                         wireType, field.name, field.type, field.type.getWireType()));
     }
 
+    private void _reportInvalidLength(int len) throws IOException {
+        _reportError(String.format("Invalid length (%d): must be positive number", len));
+    }
+
     protected void _reportTooLongVInt(int fifth) throws IOException {
         _reportError("Too long tag VInt: fifth byte 0x"+Integer.toHexString(fifth));
     }
 
     protected void _reportTooLongVLong(int fifth) throws IOException {
         _reportError("Too long tag VLong: tenth byte 0x"+Integer.toHexString(fifth));
+    }
+
+    protected void _reportInvalidInitial(int mask) throws JsonParseException {
+        _reportError("Invalid UTF-8 start byte 0x"+Integer.toHexString(mask));
+    }
+
+    protected void _reportInvalidOther(int mask) throws JsonParseException {
+        _reportError("Invalid UTF-8 middle byte 0x"+Integer.toHexString(mask));
+    }
+
+    protected void _reportInvalidOther(int mask, int ptr) throws JsonParseException {
+        _inputPtr = ptr;
+        _reportInvalidOther(mask);
+    }
+
+    protected void _reportInvalidChar(int c) throws JsonParseException {
+        // Either invalid WS or illegal UTF-8 start char
+        if (c < ' ') {
+            _throwInvalidSpace(c);
+        }
+        _reportInvalidInitial(c);
     }
 }
