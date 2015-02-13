@@ -37,11 +37,11 @@ abstract class ProtobufTestBase extends TestCase
             +"}\n";
 
     final protected static String PROTOC_BOX =
-            PROTOC_POINT
-            +"message Box {\n"
+            "message Box {\n"
             +" required Point topLeft = 3;\n"
             +" required Point bottomRight = 5;\n"
             +"}\n"
+            +PROTOC_POINT;
     ;
 
     final protected static String PROTOC_NODE =
@@ -116,14 +116,37 @@ abstract class ProtobufTestBase extends TestCase
             this.x = x;
             this.y = y;
         }
+
+        @Override
+        public String toString() {
+            return "[x="+x+",y="+y+"]";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;
+            if (o.getClass() != getClass()) return false;
+            Point other = (Point) o;
+            return (other.x == x) && (other.y == y);
+        }
     }
 
     static class Box {
         public Point topLeft, bottomRight;
-        
+
+        public Box() { }
+        public Box(Point tl, Point br) {
+            topLeft = tl;
+            bottomRight = br;
+        }
+
         public Box(int x1, int y1, int x2, int y2) {
-            topLeft = new Point(x1, y1);
-            bottomRight = new Point(x2, y2);
+            this(new Point(x1, y1), new Point(x2, y2));
+        }
+
+        @Override
+        public String toString() {
+            return "[topLeft="+topLeft+",bottomRight="+bottomRight+"]";
         }
     }
 
@@ -134,6 +157,11 @@ abstract class ProtobufTestBase extends TestCase
         public Name(String f, String l) {
             first = f;
             last = l;
+        }
+
+        @Override
+        public String toString() {
+            return "[first="+first+", last="+last+"]";
         }
     }
     

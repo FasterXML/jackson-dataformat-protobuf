@@ -40,7 +40,28 @@ public class ReadSimpleTest extends ProtobufTestBase
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
         final ObjectWriter w = MAPPER.writerFor(Name.class)
                 .with(schema);
+        // make sure to use at least one non-ascii char in there:
         Name input = new Name("Billy", "Baco\u00F1");
+
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+
+        assertEquals(15, bytes.length);
+
+        Name result = MAPPER.reader(Name.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+        assertEquals(input.first, result.first);
+        assertEquals(input.last, result.last);
+    }
+
+    public void testReadBox() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX);
+        final ObjectWriter w = MAPPER.writerFor(Box.class)
+                .with(schema);
+        Point topLeft = new Point(100, 150);
+        Point bottomRight = new Point(500, 1090);
+        Box input = new Box(topLeft, bottomRight);
 
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
@@ -54,9 +75,12 @@ for (int i = 0; i < bytes.length; ++i) {
 }
 */
 
-        Name result = MAPPER.reader(Name.class).with(schema).readValue(bytes);
+        Box result = MAPPER.reader(Box.class).with(schema).readValue(bytes);
         assertNotNull(result);
-        assertEquals(input.first, result.first);
-        assertEquals(input.last, result.last);
+        assertNotNull(result.topLeft);
+        assertNotNull(result.bottomRight);
+        assertEquals(input.topLeft, result.topLeft);
+        assertEquals(input.bottomRight, result.bottomRight);
     }
+
 }
