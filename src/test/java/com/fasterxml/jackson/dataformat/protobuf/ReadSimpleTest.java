@@ -48,9 +48,11 @@ public class ReadSimpleTest extends ProtobufTestBase
         // 6 bytes: 1 byte tags, 2 byte values
         assertEquals(15, bytes.length);
 
+        /*
 for (int i = 0; i < bytes.length; ++i) {
     System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
 }
+*/
 
         Name result = MAPPER.reader(Name.class).with(schema).readValue(bytes);
         assertNotNull(result);

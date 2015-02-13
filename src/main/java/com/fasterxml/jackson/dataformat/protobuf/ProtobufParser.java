@@ -541,7 +541,7 @@ public class ProtobufParser extends ParserMinimalBase
         _tokenInputTotal = _currInputProcessed + _inputPtr;
         // also: clear any data retained so far
         _binaryValue = null;
-
+        
         switch (_state) {
         case STATE_INITIAL:
             _currentMessage = _schema.getRootType();
@@ -559,13 +559,12 @@ public class ProtobufParser extends ParserMinimalBase
             }
             {
                 int tag = _decodeVInt();
-                
                 int wireType = (tag & 0x7);
+
                 _currentType = wireType;
                 // Note: may be null; if so, value needs to be skipped
                 _currentField = _currentMessage.field(tag >> 3);
                 if (_currentField == null) {
-System.err.println("Unknown field, tag "+(tag >> 3)+", type "+(tag & 0x7)+", byte 0x"+Integer.toHexString(tag));
                     return _skipUnknownAtRoot(wireType);
                 }
                 _parsingContext.setCurrentName(_currentField.name);
@@ -1229,11 +1228,11 @@ System.err.println("Unknown field, tag "+(tag >> 3)+", type "+(tag & 0x7)+", byt
      */
     protected void _finishToken() throws IOException
     {
+        _tokenIncomplete = false;
         final int len = _currentLength;
         
         if (_currToken == JsonToken.VALUE_STRING) {
             if (len > (_inputEnd - _inputPtr)) {
-System.err.println(" finish text, len "+len+", at "+_inputPtr+" (end "+_inputEnd+")");   
                 // or if not, could we read?
                 if (len >= _inputBuffer.length) {
                     // If not enough space, need handling similar to chunked
@@ -1244,8 +1243,6 @@ System.err.println(" finish text, len "+len+", at "+_inputPtr+" (end "+_inputEnd
             }
             // offline for better optimization
             _finishShortText(len);
-
-System.err.println(" Text '"+getText()+"'");            
             return;
         }
         if (_currToken == JsonToken.VALUE_EMBEDDED_OBJECT) {
