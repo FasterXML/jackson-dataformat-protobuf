@@ -440,7 +440,8 @@ public class ProtobufParser extends ParserMinimalBase
     }
     
     @Override
-    public void close() throws IOException {
+    public void close() throws IOException
+    {
         _state = STATE_CLOSED;
         _currToken = null;
         if (!_closed) {
@@ -523,6 +524,26 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
+    /*
+    @Override
+    public JsonToken nextToken() throws IOException
+    {
+        JsonToken t = nextTokenX();
+        if (t == JsonToken.FIELD_NAME) {
+            System.out.print("Field name: "+getCurrentName());
+        } else if (t == JsonToken.VALUE_NUMBER_INT) {
+                System.out.print("Int: "+getIntValue());
+        } else {
+            System.out.print("Next: "+t);
+        }
+        System.out.println(" (state now: "+_state+", ptr "+_inputPtr+")");
+        return t;
+    }
+
+    public JsonToken nextTokenX() throws IOException {
+
+    */
+
     @Override
     public JsonToken nextToken() throws IOException
     {
@@ -559,7 +580,7 @@ public class ProtobufParser extends ParserMinimalBase
                 // Note: may be null; if so, value needs to be skipped
                 _currentField = _currentMessage.field(tag >> 3);
                 if (_currentField == null) {
-                    return _skipUnknownField(wireType);
+                    return _skipUnknownField(tag >> 3, wireType);
                 }
                 _parsingContext.setCurrentName(_currentField.name);
                 _state = STATE_ROOT_VALUE;
@@ -584,6 +605,7 @@ public class ProtobufParser extends ParserMinimalBase
                             _inputPtr, _currentEndOffset, _currentMessage.getName());
                 }
                 _parsingContext = _parsingContext.getParent();
+                _currentMessage = _parsingContext.getMessageType();
                 _currentEndOffset = _parsingContext.getEndOffset();
                 _state = _parsingContext.inRoot() ? STATE_ROOT_KEY : STATE_NESTED_KEY;
                 return (_currToken = JsonToken.END_OBJECT);
@@ -598,7 +620,7 @@ public class ProtobufParser extends ParserMinimalBase
                 _currentType = wireType;
                 _currentField = _currentMessage.field(tag >> 3);
                 if (_currentField == null) {
-                    return _skipUnknownField(wireType);
+                    return _skipUnknownField(tag>>3, wireType);
                 }
                 _parsingContext.setCurrentName(_currentField.name);
                 _state = STATE_NESTED_VALUE;
@@ -755,19 +777,27 @@ public class ProtobufParser extends ParserMinimalBase
         return type;
     }
 
-    private JsonToken _skipUnknownField(int wireType) throws IOException
+    private JsonToken _skipUnknownField(int tag, int wireType) throws IOException
     {
+        // First: is this even allowed?
+        if (!isEnabled(JsonParser.Feature.IGNORE_UNDEFINED)) {
+            _reportErrorF("Undefined property (id %d, wire type %d) for message type %s: not allowed to ignore, as `JsonParser.Feature.IGNORE_UNDEFINED` disabled",
+                    tag, wireType, _currentMessage.getName());
+        }
+        
         while (true) {
             _skipUnknownAtRoot2(wireType);
 
             // end-of-the-line?
             if (_inputPtr >= _inputEnd) {
-                if (!loadMore()) {
+                if (_state == STATE_NESTED_KEY) {
+                    loadMoreGuaranteed();
+                } else if (!loadMore()) {
                     close();
                     return null;
                 }
             }
-            int tag = _decodeVInt();
+            tag = _decodeVInt();
             
             wireType = (tag & 0x7);
             _currentType = wireType;

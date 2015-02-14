@@ -66,7 +66,6 @@ public class ReadSimpleTest extends ProtobufTestBase
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
 
-        // 6 bytes: 1 byte tags, 2 byte values
         assertEquals(15, bytes.length);
 
         /*
