@@ -17,14 +17,25 @@ abstract class ProtobufTestBase extends TestCase
     /* Basic protoc definitions
     /**********************************************************
      */
+
+    enum Corpus {
+        UNIVERSAL,
+        WEB;
+    }
     
+    static class SearchRequest {
+        public String query;
+        public int page_number, result_per_page;
+        public Corpus corpus;
+    }
+
     final protected static String PROTOC_SEARCH_REQUEST = "message SearchRequest {\n"
             +" required string query = 1;\n"
             +" optional int32 page_number = 2;\n"
             +" optional int32 result_per_page = 3;\n"
             +" enum Corpus {\n"
-            +"   UNIVERSAL = 0;\n"
-            +"   WEB = 1;\n"
+            +"   UNIVERSAL = 10;\n"
+            +"   WEB = 20;\n"
             +" }\n"
             +" optional Corpus corpus = 4 [default = UNIVERSAL];\n"
             +"}\n"

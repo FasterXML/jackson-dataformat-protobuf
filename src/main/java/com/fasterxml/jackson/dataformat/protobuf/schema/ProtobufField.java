@@ -2,6 +2,7 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.SerializableString;
@@ -45,14 +46,22 @@ public class ProtobufField implements Comparable<ProtobufField>
      */
     protected final Map<String,Integer> enumValues;
 
-    protected final boolean isObject;
-
+    /**
+     * For fields of type {@link FieldType#ENUM} with non-standard indexing,
+     * mapping back from tag ids to enum names.
+     */
+    protected final Map<Integer,String> enumsById;
+    
     /**
      * Link to next field within message definition; used for efficient traversal.
      * Due to inverse construction order need to be assigned after construction;
      * but functionally immutable.
      */
     public ProtobufField next;
+    
+    public final boolean isObject;
+
+    public final boolean isStdEnum;
     
     public ProtobufField(Field nativeField, FieldType type) {
         this(nativeField, type, null, null);
@@ -78,8 +87,20 @@ public class ProtobufField implements Comparable<ProtobufField>
         usesZigZag = type.usesZigZag();
         if (et == null) {
             enumValues = Collections.emptyMap();
+            isStdEnum = false;
+            enumsById = null;
         } else {
             enumValues = et.valueMapping();
+            isStdEnum = et.usesStandardIndexing();
+            if (isStdEnum) {
+                enumsById = null;
+            } else {
+                LinkedHashMap<Integer,String> byId = new LinkedHashMap<Integer,String>();
+                for (Map.Entry<String,Integer> entry : enumValues.entrySet()) {
+                    byId.put(entry.getValue(), entry.getKey());
+                }
+                enumsById = byId;
+            }
         }
         messageType = msg;
 
@@ -138,17 +159,12 @@ public class ProtobufField implements Comparable<ProtobufField>
         Integer I = enumValues.get(key);
         return (I == null) ? -1 : I.intValue();
     }
+    public String findEnumByIndex(int index) {
+        return enumsById.get(Integer.valueOf(index));
+    }
 
     public Collection<String> getEnumValues() {
         return enumValues.keySet();
-    }
-
-    public int getId() {
-        return id;
-    }
-    
-    public boolean isObject() {
-        return isObject;
     }
 
     public boolean isArray() {

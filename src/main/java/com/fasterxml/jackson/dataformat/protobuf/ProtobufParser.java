@@ -745,9 +745,24 @@ public class ProtobufParser extends ParserMinimalBase
         case ENUM:
             // 12-Feb-2015, tatu: Can expose as index (int) or name, but internally encoded as VInt.
             //    So for now, expose as is; may add a feature to choose later on.
-            _numberInt = _decodeLength();
-            _numTypesValid = NR_INT;
-            type =  JsonToken.VALUE_NUMBER_INT;
+            // But! May or may not be directly mapped; may need to translate
+            {
+                int ix = _decodeLength();
+                if (_currentField.isStdEnum) {
+                    _numberInt = ix;
+                    _numTypesValid = NR_INT;
+                    type =  JsonToken.VALUE_NUMBER_INT;
+                } else {
+                    // Could translate to better id, but for now let databind
+                    // handle that part
+                    String enumStr = _currentField.findEnumByIndex(ix);
+                    if (enumStr == null) {
+                        _reportErrorF("Unknown id %d (for enum field %s)", ix, _currentField.name);
+                    }
+                    type = JsonToken.VALUE_STRING;
+                    _textBuffer.resetWithString(enumStr);System.err.println("ENUM: translate back to: "+enumStr+" from "+ix);
+                }
+            }
             break;
             
         case MESSAGE:

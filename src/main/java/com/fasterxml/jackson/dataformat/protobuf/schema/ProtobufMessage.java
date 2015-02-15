@@ -43,7 +43,7 @@ public class ProtobufMessage
     public ProtobufField field(int id) {
         for (int i = 0, len = _fields.length; i < len; ++i) {
             ProtobufField f = _fields[i];
-            if (f.getId() == id) {
+            if (f.id == id) {
                 return f;
             }
         }

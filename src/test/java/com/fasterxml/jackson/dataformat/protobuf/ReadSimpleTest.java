@@ -82,4 +82,34 @@ for (int i = 0; i < bytes.length; ++i) {
         assertEquals(input.bottomRight, result.bottomRight);
     }
 
+    public void testSearchMessage() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_SEARCH_REQUEST);
+        final ObjectWriter w = MAPPER.writerFor(SearchRequest.class)
+                .with(schema);
+        SearchRequest input = new SearchRequest();
+        input.corpus = Corpus.WEB;
+        input.page_number = 3;
+        input.result_per_page = 200;
+        input.query = "get all";
+
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+
+        assertEquals(16, bytes.length);
+
+        /*
+for (int i = 0; i < bytes.length; ++i) {
+    System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
+}
+*/
+
+        SearchRequest result = MAPPER.reader(SearchRequest.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+
+        assertEquals(input.page_number, result.page_number);
+        assertEquals(input.result_per_page, result.result_per_page);
+        assertEquals(input.query, result.query);
+        assertEquals(input.corpus, result.corpus);
+    }
 }

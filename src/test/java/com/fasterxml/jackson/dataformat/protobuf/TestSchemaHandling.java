@@ -10,6 +10,21 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
 public class TestSchemaHandling extends ProtobufTestBase
 {
+    final protected static String PROTOC_ENUMS =
+            "message Enums {\n"
+            +" enum StdEnum {\n"
+            +"   A = 0;\n"
+            +"   B = 1;\n"
+            +" }\n"
+            +" enum NonStdEnum {\n"
+            +"   C = 10;\n"
+            +"   D = 20;\n"
+            +" }\n"
+            +" optional StdEnum enum1 = 1;\n"
+            +" optional NonStdEnum enum2 = 2;\n"
+            +"}\n"
+    ;
+
     public void testSimpleSearchRequest() throws Exception
     {
         // First: with implicit first type:
@@ -57,4 +72,28 @@ public class TestSchemaHandling extends ProtobufTestBase
 
         _verifyMessageFieldLinking(schema.getRootType());
     }
+
+    public void testEnum() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_ENUMS);
+        assertNotNull(schema);
+        List<String> all = schema.getMessageTypes();
+        assertEquals(1, all.size());
+
+        ProtobufMessage msg = schema.getRootType();
+        assertEquals(2, msg.getFieldCount());
+
+        _verifyMessageFieldLinking(msg);
+
+        ProtobufField f;
+        
+        f = msg.field("enum1");
+        assertNotNull(f);
+        assertTrue(f.isStdEnum);
+        
+        f = msg.field("enum2");
+        assertNotNull(f);
+        assertFalse(f.isStdEnum);
+    }
 }
+

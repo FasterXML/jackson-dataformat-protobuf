@@ -65,10 +65,18 @@ public class TypeResolver
     protected static ProtobufEnum _constructEnum(EnumType nativeEnum)
     {
         final Map<String,Integer> valuesByName = new LinkedHashMap<String,Integer>();
+        boolean standard = true;
+        int exp = 0;
+
         for (EnumType.Value v : nativeEnum.getValues()) {
-            valuesByName.put(v.getName(), v.getTag());
+            int id = v.getTag();
+            if (standard && (id != exp)) {
+                standard = false;
+            }
+            valuesByName.put(v.getName(), id);
+            ++exp;
         }
-        return new ProtobufEnum(nativeEnum.getName(), valuesByName);
+        return new ProtobufEnum(nativeEnum.getName(), valuesByName, standard);
     }
 
     public ProtobufMessage resolve(MessageType rawType)

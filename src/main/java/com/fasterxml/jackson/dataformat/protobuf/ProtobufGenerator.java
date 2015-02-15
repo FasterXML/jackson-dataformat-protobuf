@@ -386,7 +386,7 @@ public class ProtobufGenerator extends GeneratorBase
             // note: no buffering on root
         } else {
             // but also, field value must be Message if so
-            if (!_currField.isObject()) {
+            if (!_currField.isObject) {
                 _reportError("Can not write START_OBJECT: type of field '"+_currField.name+"' not Message but: "+_currField.type);
             }
             _currMessage = _currField.getMessageType();
