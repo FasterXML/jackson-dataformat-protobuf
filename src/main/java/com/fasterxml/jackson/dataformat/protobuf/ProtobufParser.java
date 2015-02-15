@@ -760,7 +760,7 @@ public class ProtobufParser extends ParserMinimalBase
                         _reportErrorF("Unknown id %d (for enum field %s)", ix, _currentField.name);
                     }
                     type = JsonToken.VALUE_STRING;
-                    _textBuffer.resetWithString(enumStr);System.err.println("ENUM: translate back to: "+enumStr+" from "+ix);
+                    _textBuffer.resetWithString(enumStr);
                 }
             }
             break;
