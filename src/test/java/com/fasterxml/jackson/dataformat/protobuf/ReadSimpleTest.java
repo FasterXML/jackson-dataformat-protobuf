@@ -68,12 +68,6 @@ public class ReadSimpleTest extends ProtobufTestBase
 
         assertEquals(15, bytes.length);
 
-        /*
-for (int i = 0; i < bytes.length; ++i) {
-    System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
-}
-*/
-
         Box result = MAPPER.reader(Box.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertNotNull(result.topLeft);
@@ -82,6 +76,45 @@ for (int i = 0; i < bytes.length; ++i) {
         assertEquals(input.bottomRight, result.bottomRight);
     }
 
+    public void testStringArraySimple() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_STRINGS);
+        final ObjectWriter w = MAPPER.writerFor(Strings.class)
+                .with(schema);
+        Strings input = new Strings("Dogs", "like", "Baco\u00F1");
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+        assertEquals(20, bytes.length);
+
+        Strings result = MAPPER.reader(Strings.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+        assertNotNull(result.values);
+        assertEquals(input.values.length, result.values.length);
+        for (int i = 0; i < result.values.length; ++i) {
+            assertEquals(input.values[i], result.values[i]);
+        }
+    }
+
+    public void testStringArrayPacked() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_STRINGS_PACKED);
+        final ObjectWriter w = MAPPER.writerFor(Strings.class)
+                .with(schema);
+        Strings input = new Strings("Dogs", "like", "Baco\u00F1");
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+        // one byte less, due to length prefix
+        assertEquals(19, bytes.length);
+
+        Strings result = MAPPER.reader(Strings.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+        assertNotNull(result.values);
+        assertEquals(input.values.length, result.values.length);
+        for (int i = 0; i < result.values.length; ++i) {
+            assertEquals(input.values[i], result.values[i]);
+        }
+    }
+    
     public void testSearchMessage() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_SEARCH_REQUEST);
@@ -95,7 +128,6 @@ for (int i = 0; i < bytes.length; ++i) {
 
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
-
         assertEquals(16, bytes.length);
 
         /*

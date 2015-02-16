@@ -69,6 +69,18 @@ abstract class ProtobufTestBase extends TestCase
             +" required string last = 7;\n"
             +"}\n"
     ;
+
+    final protected static String PROTOC_STRINGS =
+            "message Strings {\n"
+            +" repeated string values = 2;\n"
+            +"}\n"
+    ;
+
+    final protected static String PROTOC_STRINGS_PACKED =
+            "message Strings {\n"
+            +" repeated string values = 2 [packed=true];\n"
+            +"}\n"
+    ;
     
     // protoc definition from 'jvm-serializers' project:
     final protected static String PROTOC_MEDIA_ITEM =
@@ -176,6 +188,13 @@ abstract class ProtobufTestBase extends TestCase
         }
     }
     
+    static class Strings {
+        public String[] values;
+
+        public Strings() { }
+        public Strings(String... v) { values = v; }
+    }
+
     // // // POJOs for "JVM-serializers" case
     
     static class  MediaItem
