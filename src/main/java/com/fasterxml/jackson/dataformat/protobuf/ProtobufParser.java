@@ -593,33 +593,7 @@ public class ProtobufParser extends ParserMinimalBase
                     return (_currToken = JsonToken.END_OBJECT);
                 }
             }
-            {
-                int tag = _decodeVInt();
-                int wireType = (tag & 0x7);
-
-                // Note: may be null; if so, value needs to be skipped
-                _currentField = _currentMessage.field(tag >> 3);
-                if (_currentField == null) {
-                    return _skipUnknownField(tag >> 3, wireType);
-                }
-                _parsingContext.setCurrentName(_currentField.name);
-                // otherwise quickly validate compatibility
-                if (!_currentField.isValidFor(wireType)) {
-                    _reportIncompatibleType(_currentField, wireType);
-                }
-
-                // array?
-                if (_currentField.repeated) {
-                    if (_currentField.packed) {
-                        _state = STATE_ARRAY_START_PACKED;
-                    } else {
-                        _state = STATE_ARRAY_START;
-                    }                    
-                } else {
-                    _state = STATE_ROOT_VALUE;
-                }
-            }
-            return (_currToken = JsonToken.FIELD_NAME);
+            return _handleRootKey(_decodeVInt());
             
         case STATE_ROOT_VALUE:
             {
@@ -635,21 +609,7 @@ public class ProtobufParser extends ParserMinimalBase
             if (_inputPtr >= _inputEnd) {
                 loadMoreGuaranteed();
             }
-            {
-                int tag = _decodeVInt();
-                int wireType = (tag & 0x7);
-
-                _currentField = _currentMessage.field(tag >> 3);
-                if (_currentField == null) {
-                    return _skipUnknownField(tag>>3, wireType);
-                }
-                _parsingContext.setCurrentName(_currentField.name);
-                _state = STATE_NESTED_VALUE;
-                if (!_currentField.isValidFor(wireType)) {
-                    _reportIncompatibleType(_currentField, wireType);
-                }
-            }
-            return (_currToken = JsonToken.FIELD_NAME);
+            return _handleNestedKey(_decodeVInt());
 
         case STATE_ARRAY_START:
             _parsingContext = _parsingContext.createChildArrayContext();            
@@ -682,7 +642,7 @@ public class ProtobufParser extends ParserMinimalBase
             }
 
         case STATE_ARRAY_VALUE_OTHER: // unpacked
-            if (_checkEnd()) {
+            if (_checkEnd()) { // need to check constraints set by surrounding Message (object)
                 return (_currToken = JsonToken.END_ARRAY);
             }
             if (_inputPtr >= _inputEnd) {
@@ -703,22 +663,36 @@ public class ProtobufParser extends ParserMinimalBase
                 if (_currentField.id == (tag >> 3)) {
                     JsonToken t = _readNextValue(_currentField.type, STATE_ARRAY_VALUE_OTHER);
                     _currToken = t;
+                    // remain in same state
                     return t;
                 }
-                // otherwise, different field, tre
+                // otherwise, different field, need to end this array
                 _nextTag = tag;
                 _state = STATE_ARRAY_END;
+                _parsingContext = _parsingContext.getParent();
+                return (_currToken = JsonToken.END_ARRAY);
             }
-            // remain in same state
-            return (_currToken = JsonToken.FIELD_NAME);
 
         case STATE_ARRAY_VALUE_PACKED:
-            // !!! TBI
-            break;
+            if (_checkEnd()) { // need to check constraints of this array itself
+                return (_currToken = JsonToken.END_ARRAY);
+            }
+            {
+                JsonToken t = _readNextValue(_currentField.type, STATE_ARRAY_VALUE_PACKED);
+                _currToken = t;
+                // remain in same state
+                return t;
+            }
             
         case STATE_ARRAY_END: // only used with unpacked and with "_nextTag"
-            // !!! TBI
-            break;
+
+            // We have returned END_ARRAY; now back to similar to STATE_ROOT_KEY / STATE_NESTED_KEY
+            
+            // First, similar to STATE_ROOT_KEY:
+            if (_parsingContext.inRoot()) {
+                return _handleRootKey(_nextTag);
+            }
+            return _handleNestedKey(_nextTag);
 
         case STATE_NESTED_VALUE:
             {
@@ -755,6 +729,50 @@ public class ProtobufParser extends ParserMinimalBase
         return true;
     }
 
+    private JsonToken _handleRootKey(int tag) throws IOException
+    {
+        int wireType = (tag & 0x7);
+
+        // Note: may be null; if so, value needs to be skipped
+        _currentField = _currentMessage.field(tag >> 3);
+        if (_currentField == null) {
+            return _skipUnknownField(tag >> 3, wireType);
+        }
+        _parsingContext.setCurrentName(_currentField.name);
+        // otherwise quickly validate compatibility
+        if (!_currentField.isValidFor(wireType)) {
+            _reportIncompatibleType(_currentField, wireType);
+        }
+
+        // array?
+        if (_currentField.repeated) {
+            if (_currentField.packed) {
+                _state = STATE_ARRAY_START_PACKED;
+            } else {
+                _state = STATE_ARRAY_START;
+            }                    
+        } else {
+            _state = STATE_ROOT_VALUE;
+        }
+        return (_currToken = JsonToken.FIELD_NAME);
+    }
+
+    private JsonToken _handleNestedKey(int tag) throws IOException
+    {
+        int wireType = (tag & 0x7);
+
+        _currentField = _currentMessage.field(tag >> 3);
+        if (_currentField == null) {
+            return _skipUnknownField(tag>>3, wireType);
+        }
+        _parsingContext.setCurrentName(_currentField.name);
+        _state = STATE_NESTED_VALUE;
+        if (!_currentField.isValidFor(wireType)) {
+            _reportIncompatibleType(_currentField, wireType);
+        }
+        return (_currToken = JsonToken.FIELD_NAME);
+    }
+    
     private JsonToken _readNextValue(FieldType t, int nextState) throws IOException
     {
         JsonToken type;
@@ -918,7 +936,7 @@ public class ProtobufParser extends ParserMinimalBase
                     loadMoreGuaranteed();
                 } else if (!loadMore()) {
                     close();
-                    return JsonToken.END_OBJECT;
+                    return (_currToken = JsonToken.END_OBJECT);
                 }
             }
             tag = _decodeVInt();
