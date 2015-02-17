@@ -1078,7 +1078,7 @@ public class ProtobufGenerator extends GeneratorBase
                         buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
                         v >>= 7;
                         // and now must have at most 3 bits (since negatives were offlined)
-                        buf[ptr++] = (byte) ((v & 0x7F) + 0x80);
+                        buf[ptr++] = (byte) (v & 0x7F);
                     }
                 }
             }

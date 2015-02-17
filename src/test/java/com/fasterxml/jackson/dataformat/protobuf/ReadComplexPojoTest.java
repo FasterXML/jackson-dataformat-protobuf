@@ -1,12 +1,11 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.*;
 
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
-public class WriteComplexPojoTest extends ProtobufTestBase
+public class ReadComplexPojoTest extends ProtobufTestBase
 {
     final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
 
@@ -24,11 +23,17 @@ public class WriteComplexPojoTest extends ProtobufTestBase
         */
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_MEDIA_ITEM);
         final ObjectWriter w = MAPPER.writer(schema);
-        byte[] bytes = w.writeValueAsBytes(MediaItem.buildItem());
+        MediaItem input = MediaItem.buildItem();
+        byte[] bytes = w.writeValueAsBytes(input);
 
         assertNotNull(bytes);
 
-        assertEquals(252, bytes.length);
-        // !!! TODO: verify
+        MediaItem result = MAPPER.reader(MediaItem.class).with(schema)
+                .readValue(bytes);
+        assertNotNull(result);
+        byte[] b2 = w.writeValueAsBytes(result);
+        assertEquals(bytes.length, b2.length);
+
+        assertEquals(input, result);
     }
 }

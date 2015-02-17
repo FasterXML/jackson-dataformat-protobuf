@@ -47,6 +47,12 @@ abstract class ProtobufTestBase extends TestCase
             +" required sint32 y = 2;\n"
             +"}\n";
 
+    final protected static String PROTOC_POINT_L =
+            "message Point {\n"
+            +" required int64 x = 1;\n"
+            +" required sint64 y = 2;\n"
+            +"}\n";
+    
     final protected static String PROTOC_BOX =
             "message Box {\n"
             +" required Point topLeft = 3;\n"
@@ -94,32 +100,32 @@ abstract class ProtobufTestBase extends TestCase
 "  repeated Image images = 2;\n"+
 "}\n"+
 "message Image {\n"+
-"  required string uri = 1;\n"+
-"  optional string title = 2;\n"+
-"  required int32 width = 3;\n"+
-"  required int32 height = 4;\n"+
+"  required string uri = 3;\n"+
+"  optional string title = 4;\n"+
+"  required int32 width = 5;\n"+
+"  required int32 height = 6;\n"+
 "  enum Size {\n"+
 "    SMALL = 0;\n"+
 "    LARGE = 1;\n"+
 "  }\n"+
-"  required Size size = 5;\n"+
+"  required Size size = 7;\n"+
 "}\n"+
 "message Media {\n"+
-"  required string uri = 1;\n"+
-"  optional string title = 2;\n"+
-"  required int32 width = 3;\n"+
-"  required int32 height = 4;\n"+
-"  required string format = 5;\n"+
-"  required int64 duration = 6;\n"+
-"  required int64 size = 7;\n"+
-"  optional int32 bitrate = 8;\n"+
-"  repeated string persons = 9;\n"+
+"  required string uri = 10;\n"+
+"  optional string title = 11;\n"+
+"  required int32 width = 12;\n"+
+"  required int32 height = 13;\n"+
+"  required string format = 14;\n"+
+"  required int64 duration = 15;\n"+
+"  required int64 size = 16;\n"+
+"  optional int32 bitrate = 17;\n"+
+"  repeated string persons = 18;\n"+
 "  enum Player {\n"+
-"    JAVA = 0;\n"+
-"    FLASH = 1;\n"+
+"    JAVA = 4;\n"+
+"    FLASH = 5;\n"+
 "}\n"+
-"required Player player = 10;\n"+
-"optional string copyright = 11;\n"+
+"required Player player = 20;\n"+
+"optional string copyright = 21;\n"+
 "}\n"
 ;
     

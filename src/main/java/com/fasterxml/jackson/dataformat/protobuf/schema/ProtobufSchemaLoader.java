@@ -17,7 +17,10 @@ import com.squareup.protoparser.ProtoSchemaParser;
  * exception will be thrown.
  */
 public class ProtobufSchemaLoader
+    implements java.io.Serializable // since mapper has a reference
 {
+    private static final long serialVersionUID = 1L;
+
     private final static Charset UTF8 = Charset.forName("UTF-8");
 
     public final static String DEFAULT_SCHEMA_NAME = "Unnamed-protobuf-schema";

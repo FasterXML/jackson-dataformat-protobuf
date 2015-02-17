@@ -16,8 +16,8 @@ public class ReadSimpleTest extends ProtobufTestBase
     /* Test methods
     /**********************************************************
      */
-    
-    public void testReadPoint() throws Exception
+
+    public void testReadPointInt() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
         final ObjectWriter w = MAPPER.writerFor(Point.class)
@@ -51,6 +51,39 @@ public class ReadSimpleTest extends ProtobufTestBase
         p.close();
     }
 
+    public void testReadPointLong() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_L);
+        final ObjectWriter w = MAPPER.writerFor(Point.class)
+                .with(schema);
+        Point input = new Point(Integer.MAX_VALUE, Integer.MIN_VALUE);
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+
+        assertEquals(12, bytes.length);
+
+        // but more importantly, try to parse
+        Point result = MAPPER.reader(Point.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+        assertEquals(input.x, result.x);
+        assertEquals(input.y, result.y);
+
+        // actually let's also try via streaming parser
+        JsonParser p = MAPPER.getFactory().createParser(bytes);
+        p.setSchema(schema);
+        assertToken(JsonToken.START_OBJECT, p.nextToken());
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("x", p.getCurrentName());
+        assertToken(JsonToken.VALUE_NUMBER_INT, p.nextToken());
+        assertEquals(input.x, p.getIntValue());
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("y", p.getCurrentName());
+        assertToken(JsonToken.VALUE_NUMBER_INT, p.nextToken());
+        assertEquals(input.y, p.getIntValue());
+        assertToken(JsonToken.END_OBJECT, p.nextToken());
+        p.close();
+    }
+    
     public void testReadName() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);

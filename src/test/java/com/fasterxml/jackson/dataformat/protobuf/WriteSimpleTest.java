@@ -1,5 +1,7 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
+import java.io.ByteArrayOutputStream;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.*;
@@ -24,7 +26,7 @@ public class WriteSimpleTest extends ProtobufTestBase
     /* Test methods
     /**********************************************************
      */
-    
+
     public void testWritePoint() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
@@ -41,6 +43,54 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(4, bytes[3]); // VInt 2, but with zig-zag
     }
 
+    public void testWritePointWithLongs() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_L);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        JsonGenerator g = MAPPER.getFactory().createGenerator(bytes);
+        g.setSchema(schema);
+
+        g.writeStartObject();
+        g.writeFieldName("x");
+        g.writeNumber(Long.MAX_VALUE);
+        g.writeFieldName("y");
+        g.writeNumber(Long.MAX_VALUE);
+        g.writeEndObject();
+        g.close();
+        
+        byte[] b = bytes.toByteArray();
+        assertNotNull(bytes);
+
+        // 22 bytes: 1 byte tags, 10 byte values
+        assertEquals(21, b.length);
+        assertEquals(8, b[0]); // wire type 0 (3 LSB), id of 1 (-> 0x8)
+
+        // 7 x 0xFF, last 0x7F -> 0x7F....FF, NOT using zig-zag
+        assertEquals(0xFF, b[1] & 0xFF);
+        assertEquals(0xFF, b[2] & 0xFF);
+        assertEquals(0xFF, b[3] & 0xFF);
+        assertEquals(0xFF, b[4] & 0xFF);
+        assertEquals(0xFF, b[5] & 0xFF);
+        assertEquals(0xFF, b[6] & 0xFF);
+        assertEquals(0xFF, b[7] & 0xFF);
+        assertEquals(0xFF, b[8] & 0xFF);
+        assertEquals(0x7F, b[9] & 0x7F);
+
+        assertEquals(0x10, b[10]); // wire type 0 (3 LSB), id of 2 (-> 0x10)
+
+        // but 'y' will be using zig-zag
+        assertEquals(0xFE, b[11] & 0xFF);
+        assertEquals(0xFF, b[12] & 0xFF);
+        assertEquals(0xFF, b[13] & 0xFF);
+        assertEquals(0xFF, b[14] & 0xFF);
+        assertEquals(0xFF, b[15] & 0xFF);
+        assertEquals(0xFF, b[16] & 0xFF);
+        assertEquals(0xFF, b[17] & 0xFF);
+        assertEquals(0xFF, b[18] & 0xFF);
+        assertEquals(0xFF, b[19] & 0xFF);
+        assertEquals(0x01, b[20] & 0x01);
+    }
+    
     public void testWriteCoord() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Box");

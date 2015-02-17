@@ -809,6 +809,7 @@ public class ProtobufParser extends ParserMinimalBase
             break;
 
         case VINT64_STD:
+
             _numberLong = _decodeVLong();
             _numTypesValid = NR_LONG;
             type =  JsonToken.VALUE_NUMBER_INT;
@@ -1949,51 +1950,52 @@ public class ProtobufParser extends ParserMinimalBase
             return _decodeVLongSlow();
         }
         final byte[] buf = _inputBuffer;
-
+        
         // First things first: can start by accumulating as int, first 4 bytes
 
         int v = buf[_inputPtr++];
         if (v >= 0) {
             return v;
         }
+        v &= 0x7F;
         int ch = buf[_inputPtr++];
-        if (ch < 0) {
+        if (ch >= 0) {
             return v | (ch << 7);
         }
         v |= ((ch & 0x7F) << 7);
         ch = buf[_inputPtr++];
-        if (ch < 0) {
+        if (ch >= 0) {
             return v | (ch << 14);
         }
         v |= ((ch & 0x7F) << 14);
         ch = buf[_inputPtr++];
-        if (ch < 0) {
+        if (ch >= 0) {
             return v | (ch << 21);
         }
         v |= ((ch & 0x7F) << 21);
-
+        
         // 4 bytes gotten. How about 4 more?
         long l = (long) v;
-
+        
         v = buf[_inputPtr++];
         if (v >= 0) {
             return (((long) v) << 28) | l;
         }
         v &= 0x7F;
         ch = buf[_inputPtr++];
-        if (ch < 0) {
+        if (ch >= 0) {
             long l2 = (v | (ch << 7));
             return (l2 << 28) | l;
         }
         v |= ((ch & 0x7F) << 7);
         ch = buf[_inputPtr++];
-        if (ch < 0) {
+        if (ch >= 0) {
             long l2 = (v | (ch << 14));
             return (l2 << 28) | l;
         }
         v |= ((ch & 0x7F) << 14);
         ch = buf[_inputPtr++];
-        if (ch < 0) {
+        if (ch >= 0) {
             return v | (ch << 21);
         }
         v |= ((ch & 0x7F) << 21);
