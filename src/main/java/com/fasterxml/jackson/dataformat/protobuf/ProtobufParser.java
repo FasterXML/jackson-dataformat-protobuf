@@ -32,8 +32,17 @@ public class ProtobufParser extends ParserMinimalBase
     
     private final static int STATE_NESTED_VALUE = 4;
 
+    // State in which an unpacked array is starting
+    private final static int STATE_ARRAY_START = 5;
+
+    private final static int STATE_ARRAY_START_PACKED = 6;
+
+    private final static int STATE_ARRAY_VALUE = 7;
+
+    private final static int STATE_ARRAY_VALUE_PACKED = 8;
+    
     // State after either reaching end-of-input, or getting explicitly closed
-    private final static int STATE_CLOSED = 5;
+    private final static int STATE_CLOSED = 9;
 
     private final static int[] UTF8_UNIT_CODES = ProtobufUtil.sUtf8UnitLengths;
     
@@ -443,7 +452,6 @@ public class ProtobufParser extends ParserMinimalBase
     public void close() throws IOException
     {
         _state = STATE_CLOSED;
-        _currToken = null;
         if (!_closed) {
             _closed = true;
             try {
@@ -569,7 +577,7 @@ public class ProtobufParser extends ParserMinimalBase
             if (_inputPtr >= _inputEnd) {
                 if (!loadMore()) {
                     close();
-                    return null;
+                    return (_currToken = JsonToken.END_OBJECT);
                 }
             }
             {
@@ -583,10 +591,20 @@ public class ProtobufParser extends ParserMinimalBase
                     return _skipUnknownField(tag >> 3, wireType);
                 }
                 _parsingContext.setCurrentName(_currentField.name);
-                _state = STATE_ROOT_VALUE;
                 // otherwise quickly validate compatibility
                 if (!_currentField.isValidFor(wireType)) {
                     _reportIncompatibleType(_currentField, wireType);
+                }
+
+                // array?
+                if (_currentField.repeated) {
+                    if (_currentField.packed) {
+                        _state = STATE_ARRAY_START_PACKED;
+                    } else {
+                        _state = STATE_ARRAY_START;
+                    }                    
+                } else {
+                    _state = STATE_ROOT_VALUE;
                 }
             }
             return (_currToken = JsonToken.FIELD_NAME);
@@ -630,6 +648,30 @@ public class ProtobufParser extends ParserMinimalBase
             }
             return (_currToken = JsonToken.FIELD_NAME);
 
+        case STATE_ARRAY_START:
+            _parsingContext = _parsingContext.createChildArrayContext();            
+            return (_currToken = JsonToken.START_ARRAY);
+
+        case STATE_ARRAY_START_PACKED:
+
+            int len = _decodeLength();
+            int newEnd = _inputPtr + len;
+
+            // First: validate that we do not extend past end offset of enclosing message
+            if (!_parsingContext.inRoot()) {
+                if (newEnd > _currentEndOffset) {
+                    _reportErrorF("Packed array for field '%s' (of type %s) extends past end of enclosing message: %d > %d (length: %d)",
+                            _currentField.name, _currentMessage.getName(), newEnd, _currentEndOffset, len);
+                }
+            }
+            _currentEndOffset = newEnd; 
+            _parsingContext = _parsingContext.createChildArrayContext(newEnd);            
+            return (_currToken = JsonToken.START_ARRAY);
+
+        case STATE_ARRAY_VALUE:
+            // !!! TBI
+            throw new Error();
+            
         case STATE_NESTED_VALUE:
             {
                 JsonToken t = _readNextValue(_currentField.type, false);
@@ -647,7 +689,7 @@ public class ProtobufParser extends ParserMinimalBase
     private JsonToken _readNextValue(FieldType t, boolean rootValue) throws IOException
     {
         JsonToken type;
-
+        
         switch (_currentField.type) {
         case DOUBLE:
             _numberDouble = Double.longBitsToDouble(_decode64Bits());
@@ -809,7 +851,7 @@ public class ProtobufParser extends ParserMinimalBase
                     loadMoreGuaranteed();
                 } else if (!loadMore()) {
                     close();
-                    return null;
+                    return JsonToken.END_OBJECT;
                 }
             }
             tag = _decodeVInt();

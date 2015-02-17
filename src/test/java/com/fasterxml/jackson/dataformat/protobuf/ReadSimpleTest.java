@@ -1,8 +1,9 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
@@ -33,6 +34,20 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertNotNull(result);
         assertEquals(input.x, result.x);
         assertEquals(input.y, result.y);
+
+        // actually let's also try via streaming parser
+        JsonParser p = MAPPER.getFactory().createParser(bytes);
+        p.setSchema(schema);
+        assertToken(JsonToken.START_OBJECT, p.nextToken());
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("x", p.getCurrentName());
+        assertToken(JsonToken.VALUE_NUMBER_INT, p.nextToken());
+        assertEquals(input.x, p.getIntValue());
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("y", p.getCurrentName());
+        assertToken(JsonToken.VALUE_NUMBER_INT, p.nextToken());
+        assertEquals(input.y, p.getIntValue());
+        assertToken(JsonToken.END_OBJECT, p.nextToken());
     }
 
     public void testReadName() throws Exception

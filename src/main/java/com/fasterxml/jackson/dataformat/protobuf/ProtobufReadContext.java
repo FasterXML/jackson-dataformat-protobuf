@@ -83,6 +83,18 @@ public final class ProtobufReadContext
         return ctxt;
     }
 
+    public ProtobufReadContext createChildArrayContext(int endOffset)
+    {
+        ProtobufReadContext ctxt = _child;
+        if (ctxt == null) {
+            _child = ctxt = new ProtobufReadContext(this, _messageType,
+                    TYPE_ARRAY, 0);
+        } else {
+            ctxt.reset(_messageType, TYPE_ARRAY, endOffset);
+        }
+        return ctxt;
+    }
+    
     public ProtobufReadContext createChildObjectContext(ProtobufMessage messageType, int endOffset)
     {
         ProtobufReadContext ctxt = _child;
