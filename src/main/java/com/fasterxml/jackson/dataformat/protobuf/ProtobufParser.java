@@ -577,6 +577,9 @@ public class ProtobufParser extends ParserMinimalBase
         
         switch (_state) {
         case STATE_INITIAL:
+            if (_schema == null) {
+                _reportError("No Schema has been assigned: can not decode content");
+            }
             _currentMessage = _schema.getRootType();
             _state = STATE_ROOT_KEY;
             _parsingContext.setMessageType(_currentMessage);            
