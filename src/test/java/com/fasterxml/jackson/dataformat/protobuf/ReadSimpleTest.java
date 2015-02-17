@@ -48,6 +48,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertToken(JsonToken.VALUE_NUMBER_INT, p.nextToken());
         assertEquals(input.y, p.getIntValue());
         assertToken(JsonToken.END_OBJECT, p.nextToken());
+        p.close();
     }
 
     public void testReadName() throws Exception
@@ -100,7 +101,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
         assertEquals(20, bytes.length);
-
+        
         Strings result = MAPPER.reader(Strings.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertNotNull(result.values);
@@ -108,6 +109,25 @@ public class ReadSimpleTest extends ProtobufTestBase
         for (int i = 0; i < result.values.length; ++i) {
             assertEquals(input.values[i], result.values[i]);
         }
+
+        // and also verify via streaming
+        JsonParser p = MAPPER.getFactory().createParser(bytes);
+        p.setSchema(schema);
+        assertToken(JsonToken.START_OBJECT, p.nextToken());
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("values", p.getCurrentName());
+        assertToken(JsonToken.START_ARRAY, p.nextToken());
+
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[0], p.getText());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[1], p.getText());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[2], p.getText());
+
+        assertToken(JsonToken.END_ARRAY, p.nextToken());
+        assertToken(JsonToken.END_OBJECT, p.nextToken());
+        p.close();
     }
 
     public void testStringArrayPacked() throws Exception
@@ -144,12 +164,6 @@ public class ReadSimpleTest extends ProtobufTestBase
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
         assertEquals(16, bytes.length);
-
-        /*
-for (int i = 0; i < bytes.length; ++i) {
-    System.out.printf("#%d: 0x%x\n", i, bytes[i] & 0xFF);
-}
-*/
 
         SearchRequest result = MAPPER.reader(SearchRequest.class).with(schema).readValue(bytes);
         assertNotNull(result);

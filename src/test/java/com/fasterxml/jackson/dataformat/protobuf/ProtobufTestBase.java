@@ -72,7 +72,7 @@ abstract class ProtobufTestBase extends TestCase
 
     final protected static String PROTOC_STRINGS =
             "message Strings {\n"
-            +" repeated string values = 2;\n"
+            +" repeated string values = 3;\n"
             +"}\n"
     ;
 

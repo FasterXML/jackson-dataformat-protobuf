@@ -68,7 +68,7 @@ public final class ProtobufReadContext
     // // // Factory methods
 
     public static ProtobufReadContext createRootContext() {
-        return new ProtobufReadContext(null, null, TYPE_ROOT, 0);
+        return new ProtobufReadContext(null, null, TYPE_ROOT, Integer.MAX_VALUE);
     }
 
     public ProtobufReadContext createChildArrayContext()
