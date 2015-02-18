@@ -223,6 +223,22 @@ abstract class ProtobufTestBase extends TestCase
 
              return item;
          }
+
+         @Override
+         public String toString() {
+             return "{MediaItem: media="+media+", images="+images+"}";
+         }
+         
+         @Override
+         public boolean equals(Object o) {
+             if (o == this) return true;                     
+             if (o == null) return false;
+             if (o.getClass() != getClass()) return false;
+
+             MediaItem other = (MediaItem) o;
+
+             return _equals(media, other.media) && _equals(images, other.images);
+         }
     }
 
     enum Size { SMALL, LARGE };
@@ -242,8 +258,24 @@ abstract class ProtobufTestBase extends TestCase
         public String title;
         public int width, height;
         public Size size;    
-    } 
 
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;                     
+            if (o == null) return false;
+            if (o.getClass() != getClass()) return false;
+
+            Image other = (Image) o;
+
+            return _equals(uri, other.uri)
+                    && _equals(title, other.title)
+                    && _equals(size, other.size)
+                    && (width == other.width)
+                    && (height == other.height)
+                    ;
+        }
+    } 
+    
     enum Player { JAVA, FLASH; }
 
     static class Media {
@@ -269,6 +301,27 @@ abstract class ProtobufTestBase extends TestCase
             }
             persons.add(p);
             return this;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;                     
+            if (o == null) return false;
+            if (o.getClass() != getClass()) return false;
+
+            Media other = (Media) o;
+
+            return _equals(uri, other.uri)
+                    && _equals(title, other.title)
+                    && (width == other.width)
+                    && (height == other.height)
+                    && _equals(format, other.format)
+                    && (duration == other.duration)
+                    && (size == other.size)
+                    && _equals(persons, other.persons)
+                    && _equals(player, other.player)
+                    && _equals(copyright, other.copyright)
+                    ;
         }
     }
     
@@ -332,4 +385,10 @@ abstract class ProtobufTestBase extends TestCase
         fail("Expected an exception with one of substrings ("+Arrays.asList(matches)+"): got one with message \""+msg+"\"");
     }
 
+    static <T> boolean _equals(T ob1, T ob2) {
+        if (ob1 == null) {
+            return (ob2 == null);
+        }
+        return ob1.equals(ob2);
+    }
 }

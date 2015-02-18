@@ -1,7 +1,11 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
-import com.fasterxml.jackson.databind.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 
+import org.junit.Assert;
+
+import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
@@ -17,10 +21,18 @@ public class ReadComplexPojoTest extends ProtobufTestBase
 
     public void testMediaItemSimple() throws Exception
     {
-        /*
-        final protected static String PROTOC_INT_ARRAY = "message Ints {\n"
-                +" repeated int32 values = 1; }\n";
-        */
+        _testMediaItem(false);
+    }
+
+    
+    public void testMediaItemWithSmallReads() throws Exception
+    {
+        _testMediaItem(true);
+    }
+
+    @SuppressWarnings("resource")
+    private void _testMediaItem(boolean smallReads) throws Exception
+    {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_MEDIA_ITEM);
         final ObjectWriter w = MAPPER.writer(schema);
         MediaItem input = MediaItem.buildItem();
@@ -29,11 +41,20 @@ public class ReadComplexPojoTest extends ProtobufTestBase
         assertNotNull(bytes);
         assertEquals(252, bytes.length);
 
-        MediaItem result = MAPPER.reader(MediaItem.class).with(schema)
-                .readValue(bytes);
+        ObjectReader r =  MAPPER.reader(MediaItem.class).with(schema);
+        MediaItem result;
+        InputStream in = new ByteArrayInputStream(bytes);
+
+        if (smallReads) {
+            in = new LimitingInputStream(in, 123);
+        }
+        result = r.readValue(in);
+        
         assertNotNull(result);
         byte[] b2 = w.writeValueAsBytes(result);
         assertEquals(bytes.length, b2.length);
+
+        Assert.assertArrayEquals(bytes, b2);
 
         assertEquals(input, result);
     }

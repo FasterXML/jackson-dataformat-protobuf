@@ -2,6 +2,7 @@ package com.fasterxml.jackson.dataformat.protobuf;
 
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.io.CharTypes;
+import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufField;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
 
 /**
@@ -22,14 +23,17 @@ public final class ProtobufReadContext
     protected ProtobufMessage _messageType;
 
     /**
+     * For array contexts: field that defines type of array values.
+     */
+    protected ProtobufField _field;
+
+    protected String _currentName;
+    
+    /**
      * Offset within input buffer where the message represented
      * by this context (if message context) ends.
      */
     protected int _endOffset;
-    
-    // // // Location information (minus source reference)
-
-    protected String _currentName;
     
     /*
     /**********************************************************
@@ -71,7 +75,7 @@ public final class ProtobufReadContext
         return new ProtobufReadContext(null, null, TYPE_ROOT, Integer.MAX_VALUE);
     }
 
-    public ProtobufReadContext createChildArrayContext()
+    public ProtobufReadContext createChildArrayContext(ProtobufField f)
     {
         ProtobufReadContext ctxt = _child;
         if (ctxt == null) {
@@ -80,10 +84,11 @@ public final class ProtobufReadContext
         } else {
             ctxt.reset(_messageType, TYPE_ARRAY, _endOffset);
         }
+        ctxt._field = f;
         return ctxt;
     }
 
-    public ProtobufReadContext createChildArrayContext(int endOffset)
+    public ProtobufReadContext createChildArrayContext(ProtobufField f, int endOffset)
     {
         ProtobufReadContext ctxt = _child;
         if (ctxt == null) {
@@ -92,6 +97,7 @@ public final class ProtobufReadContext
         } else {
             ctxt.reset(_messageType, TYPE_ARRAY, endOffset);
         }
+        ctxt._field = f;
         return ctxt;
     }
     
@@ -129,6 +135,8 @@ public final class ProtobufReadContext
 
     public ProtobufMessage getMessageType() { return _messageType; }
 
+    public ProtobufField getField() { return _field; }
+    
     public void setMessageType(ProtobufMessage mt) { _messageType = mt; }
     
     /**
