@@ -76,9 +76,9 @@ public final class ProtobufReadContext
         ProtobufReadContext ctxt = _child;
         if (ctxt == null) {
             _child = ctxt = new ProtobufReadContext(this, _messageType,
-                    TYPE_ARRAY, 0);
+                    TYPE_ARRAY, _endOffset);
         } else {
-            ctxt.reset(_messageType, TYPE_ARRAY, 0);
+            ctxt.reset(_messageType, TYPE_ARRAY, _endOffset);
         }
         return ctxt;
     }

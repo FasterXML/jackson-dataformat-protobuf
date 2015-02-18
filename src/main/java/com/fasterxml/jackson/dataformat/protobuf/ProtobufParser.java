@@ -541,7 +541,7 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
-    /*
+/*    
     @Override
     public JsonToken nextToken() throws IOException
     {
@@ -561,7 +561,6 @@ public class ProtobufParser extends ParserMinimalBase
 
     public JsonToken nextTokenX() throws IOException {
 */
-
     @Override
     public JsonToken nextToken() throws IOException
     {
@@ -766,9 +765,19 @@ public class ProtobufParser extends ParserMinimalBase
             return _skipUnknownField(tag>>3, wireType);
         }
         _parsingContext.setCurrentName(_currentField.name);
-        _state = STATE_NESTED_VALUE;
         if (!_currentField.isValidFor(wireType)) {
             _reportIncompatibleType(_currentField, wireType);
+        }
+
+        // array?
+        if (_currentField.repeated) {
+            if (_currentField.packed) {
+                _state = STATE_ARRAY_START_PACKED;
+            } else {
+                _state = STATE_ARRAY_START;
+            }                    
+        } else {
+            _state = STATE_NESTED_VALUE;
         }
         return (_currToken = JsonToken.FIELD_NAME);
     }
