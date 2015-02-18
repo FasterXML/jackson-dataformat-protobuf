@@ -594,14 +594,12 @@ public class ProtobufParser extends ParserMinimalBase
                 }
             }
             return _handleRootKey(_decodeVInt());
-            
         case STATE_ROOT_VALUE:
             {
                 JsonToken t = _readNextValue(_currentField.type, STATE_ROOT_KEY);
                 _currToken = t;
                 return t;
             }
-
         case STATE_NESTED_KEY:
             if (_checkEnd()) {
                 return (_currToken = JsonToken.END_OBJECT);
@@ -1009,14 +1007,168 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
-    // !!! TODO: implement efficiently?
-    /*
     @Override
-    public boolean nextFieldName(SerializableString str) throws IOException
+    public boolean nextFieldName(SerializableString sstr) throws IOException
     {
-    }
-    */
+        if (_state == STATE_ROOT_KEY) {
+            if (_inputPtr >= _inputEnd) {
+                if (!loadMore()) {
+                    close();
+                    _currToken = JsonToken.END_OBJECT;
+                    return false;
+                }
+            }
+            int tag = _decodeVInt();
+            // inlined _handleRootKey()
 
+            int wireType = (tag & 0x7);
+            _currentField = _currentMessage.field(tag >> 3);
+            if (_currentField == null) {
+                _skipUnknownField(tag >> 3, wireType);
+                // may or may not match, but let caller figure it out
+                return false;
+            }
+            String name = _currentField.name;
+            _parsingContext.setCurrentName(name);
+            if (!_currentField.isValidFor(wireType)) {
+                _reportIncompatibleType(_currentField, wireType);
+            }
+
+            // array?
+            if (_currentField.repeated) {
+                if (_currentField.packed) {
+                    _state = STATE_ARRAY_START_PACKED;
+                } else {
+                    _state = STATE_ARRAY_START;
+                }                    
+            } else {
+                _state = STATE_ROOT_VALUE;
+            }
+            _currToken = JsonToken.FIELD_NAME;
+            return name.equals(sstr.getValue());
+        }
+        if (_state == STATE_NESTED_KEY) {
+            if (_checkEnd()) {
+                _currToken = JsonToken.END_OBJECT;
+                return false;
+            }
+            if (_inputPtr >= _inputEnd) {
+                loadMoreGuaranteed();
+            }
+            int tag = _decodeVInt();
+            // inlined '_handleNestedKey()'
+
+            int wireType = (tag & 0x7);
+
+            _currentField = _currentMessage.field(tag >> 3);
+            if (_currentField == null) {
+                _skipUnknownField(tag>>3, wireType);
+                // may or may not match, but let caller figure it out
+                return false;
+            }
+            final String name = _currentField.name;
+            _parsingContext.setCurrentName(name);
+            if (!_currentField.isValidFor(wireType)) {
+                _reportIncompatibleType(_currentField, wireType);
+            }
+
+            // array?
+            if (_currentField.repeated) {
+                if (_currentField.packed) {
+                    _state = STATE_ARRAY_START_PACKED;
+                } else {
+                    _state = STATE_ARRAY_START;
+                }                    
+            } else {
+                _state = STATE_NESTED_VALUE;
+            }
+            _currToken = JsonToken.FIELD_NAME;
+            return name.equals(sstr.getValue());
+        }
+        return super.nextFieldName(sstr);
+    }
+
+    @Override
+    public String nextFieldName() throws IOException
+    {
+        if (_state == STATE_ROOT_KEY) {
+            if (_inputPtr >= _inputEnd) {
+                if (!loadMore()) {
+                    close();
+                    _currToken = JsonToken.END_OBJECT;
+                    return null;
+                }
+            }
+            int tag = _decodeVInt();
+            // inlined _handleRootKey()
+
+            int wireType = (tag & 0x7);
+            _currentField = _currentMessage.field(tag >> 3);
+            if (_currentField == null) {
+                _skipUnknownField(tag >> 3, wireType);
+                // may or may not match, but let caller figure it out
+                return null;
+            }
+            String name = _currentField.name;
+            _parsingContext.setCurrentName(name);
+            if (!_currentField.isValidFor(wireType)) {
+                _reportIncompatibleType(_currentField, wireType);
+            }
+
+            // array?
+            if (_currentField.repeated) {
+                if (_currentField.packed) {
+                    _state = STATE_ARRAY_START_PACKED;
+                } else {
+                    _state = STATE_ARRAY_START;
+                }                    
+            } else {
+                _state = STATE_ROOT_VALUE;
+            }
+            _currToken = JsonToken.FIELD_NAME;
+            return name;
+        }
+        if (_state == STATE_NESTED_KEY) {
+            if (_checkEnd()) {
+                _currToken = JsonToken.END_OBJECT;
+                return null;
+            }
+            if (_inputPtr >= _inputEnd) {
+                loadMoreGuaranteed();
+            }
+            int tag = _decodeVInt();
+            // inlined '_handleNestedKey()'
+
+            int wireType = (tag & 0x7);
+
+            _currentField = _currentMessage.field(tag >> 3);
+            if (_currentField == null) {
+                _skipUnknownField(tag>>3, wireType);
+                // may or may not match, but let caller figure it out
+                return null;
+            }
+            final String name = _currentField.name;
+            _parsingContext.setCurrentName(name);
+            if (!_currentField.isValidFor(wireType)) {
+                _reportIncompatibleType(_currentField, wireType);
+            }
+
+            // array?
+            if (_currentField.repeated) {
+                if (_currentField.packed) {
+                    _state = STATE_ARRAY_START_PACKED;
+                } else {
+                    _state = STATE_ARRAY_START;
+                }                    
+            } else {
+                _state = STATE_NESTED_VALUE;
+            }
+            _currToken = JsonToken.FIELD_NAME;
+            return name;
+        }
+        return super.nextFieldName();
+    }
+    
     /*
     /**********************************************************
     /* Public API, access to token information, text
@@ -1107,10 +1259,14 @@ public class ProtobufParser extends ParserMinimalBase
     @Override
     public String getValueAsString() throws IOException
     {
-        if (_currToken != JsonToken.VALUE_STRING) {
-            if (_currToken == null || _currToken == JsonToken.VALUE_NULL || !_currToken.isScalarValue()) {
-                return null;
+        if (_currToken == JsonToken.VALUE_STRING) {
+            if (_tokenIncomplete) {
+                _finishToken();
             }
+            return _textBuffer.contentsAsString();
+        }
+        if (_currToken == null || _currToken == JsonToken.VALUE_NULL || !_currToken.isScalarValue()) {
+            return null;
         }
         return getText();
     }
@@ -1479,7 +1635,7 @@ public class ProtobufParser extends ParserMinimalBase
             if (len > (_inputEnd - _inputPtr)) {
                 // or if not, could we read?
                 if (len >= _inputBuffer.length) {
-                    // If not enough space, need handling similar to chunked
+                    // If not enough space, need different handling
                     _finishLongText(len);
                     return;
                 }
@@ -1523,7 +1679,6 @@ public class ProtobufParser extends ParserMinimalBase
         if (outBuf.length < len) { // one minor complication
             outBuf = _textBuffer.expandCurrentSegment(len);
         }
-        
         int outPtr = 0;
         int inPtr = _inputPtr;
         _inputPtr += len;
