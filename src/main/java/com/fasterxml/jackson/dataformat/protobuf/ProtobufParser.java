@@ -1184,12 +1184,20 @@ public class ProtobufParser extends ParserMinimalBase
     @Override    
     public String getText() throws IOException
     {
-        if (_tokenIncomplete) {
-            _finishToken();
-        }
         if (_currToken == JsonToken.VALUE_STRING) {
+            if (_tokenIncomplete) {
+                // inlined '_finishToken()`
+                final int len = _decodedLength;
+                if ((_inputPtr + len) <= _inputEnd) {
+                    _tokenIncomplete = false;
+                    _finishShortText(len);
+                } else {
+                    _finishToken();
+                }
+            }
             return _textBuffer.contentsAsString();
         }
+        // incompleteness ok for binary; won't result in usable text anyway
         JsonToken t = _currToken;
         if (t == null) { // null only before/after document
             return null;
@@ -1261,7 +1269,14 @@ public class ProtobufParser extends ParserMinimalBase
     {
         if (_currToken == JsonToken.VALUE_STRING) {
             if (_tokenIncomplete) {
-                _finishToken();
+                // inlined '_finishToken()`
+                final int len = _decodedLength;
+                if ((_inputPtr + len) <= _inputEnd) {
+                    _tokenIncomplete = false;
+                    _finishShortText(len);
+                } else {
+                    _finishToken();
+                }
             }
             return _textBuffer.contentsAsString();
         }
@@ -1629,9 +1644,9 @@ public class ProtobufParser extends ParserMinimalBase
     protected void _finishToken() throws IOException
     {
         _tokenIncomplete = false;
-        final int len = _decodedLength;
 
         if (_currToken == JsonToken.VALUE_STRING) {
+            final int len = _decodedLength;
             if (len > (_inputEnd - _inputPtr)) {
                 // or if not, could we read?
                 if (len >= _inputBuffer.length) {
@@ -1646,7 +1661,7 @@ public class ProtobufParser extends ParserMinimalBase
             return;
         }
         if (_currToken == JsonToken.VALUE_EMBEDDED_OBJECT) {
-            _binaryValue = _finishBytes(len);
+            _binaryValue = _finishBytes(_decodedLength);
             return;
         }
         // should never happen but:
