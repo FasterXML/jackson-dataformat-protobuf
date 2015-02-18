@@ -541,7 +541,7 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
-/*    
+    /*
     @Override
     public JsonToken nextToken() throws IOException
     {
@@ -560,7 +560,8 @@ public class ProtobufParser extends ParserMinimalBase
     }
 
     public JsonToken nextTokenX() throws IOException {
-*/
+    */
+
     @Override
     public JsonToken nextToken() throws IOException
     {
@@ -724,7 +725,14 @@ public class ProtobufParser extends ParserMinimalBase
         _parsingContext = _parsingContext.getParent();
         _currentMessage = _parsingContext.getMessageType();
         _currentEndOffset = _parsingContext.getEndOffset();
-        _state = _parsingContext.inRoot() ? STATE_ROOT_KEY : STATE_NESTED_KEY;
+        if (_parsingContext.inRoot()) {
+            _state =  STATE_ROOT_KEY;
+        } else if (_parsingContext.inArray()) {
+            // !!! TODO: distinguish between packed, unpacked!!!
+            _state = STATE_ARRAY_VALUE_OTHER;
+        } else {
+            _state = STATE_NESTED_KEY;
+        }
         return true;
     }
 
