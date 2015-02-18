@@ -9,8 +9,45 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
 public class ReadSimpleTest extends ProtobufTestBase
 {
-    final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
+    final protected static String PROTOC_STRINGS =
+            "message Strings {\n"
+            +" repeated string values = 3;\n"
+            +"}\n"
+    ;
 
+    final protected static String PROTOC_STRINGS_PACKED =
+            "message Strings {\n"
+            +" repeated string values = 2 [packed=true];\n"
+            +"}\n"
+    ;
+    
+    final protected static String PROTOC_NAMED_STRINGS =
+            "message NamedStrings {\n"
+            +" required string name = 2;\n"
+            +" repeated string values = 7;\n"
+            +"}\n"
+    ;
+    
+    static class Strings {
+        public String[] values;
+
+        public Strings() { }
+        public Strings(String... v) { values = v; }
+    }
+
+    static class NamedStrings {
+        public String name;
+        public String[] values;
+
+        public NamedStrings() { }
+        public NamedStrings(String n, String... v) {
+            name = n;
+            values = v;
+        }
+    }
+    
+    final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
+    
     /*
     /**********************************************************
     /* Test methods
@@ -181,6 +218,53 @@ public class ReadSimpleTest extends ProtobufTestBase
         for (int i = 0; i < result.values.length; ++i) {
             assertEquals(input.values[i], result.values[i]);
         }
+    }
+
+    public void testStringArrayWithName() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAMED_STRINGS);
+        final ObjectWriter w = MAPPER.writerFor(NamedStrings.class)
+                .with(schema);
+        NamedStrings input = new NamedStrings("abc123", "a", "b", "", "d");
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+        assertEquals(19, bytes.length);
+        
+        NamedStrings result = MAPPER.reader(NamedStrings.class).with(schema).readValue(bytes);
+        assertNotNull(result);
+        assertEquals(input.name, result.name);
+        assertNotNull(result.values);
+        assertEquals(input.values.length, result.values.length);
+        for (int i = 0; i < result.values.length; ++i) {
+            assertEquals(input.values[i], result.values[i]);
+        }
+
+        // and also verify via streaming
+        JsonParser p = MAPPER.getFactory().createParser(bytes);
+        p.setSchema(schema);
+        assertToken(JsonToken.START_OBJECT, p.nextToken());
+
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("name", p.getCurrentName());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.name, p.getText());
+        
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+        assertEquals("values", p.getCurrentName());
+        assertToken(JsonToken.START_ARRAY, p.nextToken());
+
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[0], p.getText());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[1], p.getText());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[2], p.getText());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        assertEquals(input.values[3], p.getText());
+
+        assertToken(JsonToken.END_ARRAY, p.nextToken());
+        assertToken(JsonToken.END_OBJECT, p.nextToken());
+        p.close();
     }
     
     public void testSearchMessage() throws Exception

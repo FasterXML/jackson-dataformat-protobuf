@@ -468,8 +468,12 @@ public class ProtobufGenerator extends GeneratorBase
             _encodeLongerString(text);
             return;
         }
+        if (clen == 0) {
+            _writeEmptyString();
+            return;
+        }
         _verifyValueWrite();
-        _ensureRoom(clen+clen+clen+2); // up to 3 bytes per char; and possibly 2 bytes for length
+        _ensureRoom(clen+clen+clen+7); // up to 3 bytes per char; and possibly 2 bytes for length, 5 for tag
         int ptr = _writeTag(_currPtr) + 1; // +1 to leave room for length indicator
         final int start = ptr;
         final byte[] buf = _currBuffer;
@@ -540,7 +544,7 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _currPtr = ptr;
     }
-    
+
     @Override
     public void writeString(char[] text, int offset, int clen) throws IOException
     {
@@ -561,8 +565,12 @@ public class ProtobufGenerator extends GeneratorBase
             _encodeLongerString(text, offset, clen);
             return;
         }
+        if (clen == 0) {
+            _writeEmptyString();
+            return;
+        }
         _verifyValueWrite();
-        _ensureRoom(clen+clen+clen+2); // up to 3 bytes per char; and possibly 2 bytes for length
+        _ensureRoom(clen+clen+clen+7); // up to 3 bytes per char; and possibly 2 bytes for length, 5 for tag
         int ptr = _writeTag(_currPtr) + 1; // +1 to leave room for length indicator
         final int start = ptr;
         final byte[] buf = _currBuffer;
@@ -664,6 +672,14 @@ public class ProtobufGenerator extends GeneratorBase
         }
         _verifyValueWrite();
         _writeLengthPrefixed(text, offset, len);
+    }
+
+    protected void _writeEmptyString() throws IOException
+    {
+        _verifyValueWrite();
+        _ensureRoom(6); // up to 5 bytes for tag + 1 for length
+        _currPtr = _writeTag(_currPtr);
+        _currBuffer[_currPtr++] = 0; // length
     }
 
     protected void _writeEnum(String str) throws IOException
