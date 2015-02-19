@@ -8,7 +8,9 @@ import java.util.Map;
 import com.fasterxml.jackson.core.SerializableString;
 import com.squareup.protoparser.MessageType.Field;
 
-public class ProtobufField implements Comparable<ProtobufField>
+public class ProtobufField
+// sorted in increasing order
+    implements Comparable<ProtobufField>
 {
     /**
      * Numeric tag, unshifted

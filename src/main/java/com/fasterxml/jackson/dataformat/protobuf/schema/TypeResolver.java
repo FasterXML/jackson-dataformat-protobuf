@@ -146,6 +146,8 @@ public class TypeResolver
             resolvedFields[ix++] = pbf;
             fields.put(f.getName(), pbf);
         }
+        ProtobufField first = (resolvedFields.length == 0) ? null : resolvedFields[0];
+        
         // sort field array by index
         Arrays.sort(resolvedFields);
 
@@ -154,7 +156,7 @@ public class TypeResolver
         for (int i = 0, end = f.size()-1; i < end; ++i) {
             f.get(i).assignNext(f.get(i+1));
         }
-        message.init();        
+        message.init(first);
         return message;
     }    
 

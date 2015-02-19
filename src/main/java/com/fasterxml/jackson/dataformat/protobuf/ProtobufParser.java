@@ -569,7 +569,7 @@ public class ProtobufParser extends ParserMinimalBase
         _tokenInputTotal = _currInputProcessed + _inputPtr;
         // also: clear any data retained so far
         _binaryValue = null;
-        
+
         switch (_state) {
         case STATE_INITIAL:
             if (_schema == null) {
@@ -1182,6 +1182,7 @@ public class ProtobufParser extends ParserMinimalBase
         if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
             f = _currentMessage.field(id);
         }
+//        f = _currentMessage.field(id);
         _currentField = f;
         return f;
     }
