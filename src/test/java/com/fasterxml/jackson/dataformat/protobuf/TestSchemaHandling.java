@@ -25,6 +25,8 @@ public class TestSchemaHandling extends ProtobufTestBase
             +"}\n"
     ;
 
+    final protected static String PROTOC_EMPTY = "message Empty { }";
+    
     public void testSimpleSearchRequest() throws Exception
     {
         // First: with implicit first type:
@@ -94,6 +96,14 @@ public class TestSchemaHandling extends ProtobufTestBase
         f = msg.field("enum2");
         assertNotNull(f);
         assertFalse(f.isStdEnum);
+    }
+
+    public void testEmpty() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_EMPTY);
+        assertNotNull(schema);
+        List<String> all = schema.getMessageTypes();
+        assertEquals(1, all.size());
     }
 }
 

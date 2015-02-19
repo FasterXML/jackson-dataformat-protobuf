@@ -726,7 +726,6 @@ public class ProtobufParser extends ParserMinimalBase
         if (_parsingContext.inRoot()) {
             _state =  STATE_ROOT_KEY;
         } else if (_parsingContext.inArray()) {
-            // !!! TODO: distinguish between packed, unpacked!!!
             _state = _currentField.packed ? STATE_ARRAY_VALUE_PACKED : STATE_ARRAY_VALUE_OTHER;
         } else {
             _state = STATE_NESTED_KEY;
@@ -737,11 +736,17 @@ public class ProtobufParser extends ParserMinimalBase
     private JsonToken _handleRootKey(int tag) throws IOException
     {
         int wireType = (tag & 0x7);
+        int id = (tag >> 3);
 
+        ProtobufField f;
+        
+        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+            f = _currentMessage.field(id);
+        }
+        _currentField = f;
         // Note: may be null; if so, value needs to be skipped
-        _currentField = _currentMessage.field(tag >> 3);
-        if (_currentField == null) {
-            return _skipUnknownField(tag >> 3, wireType);
+        if (f == null) {
+            return _skipUnknownField(id, wireType);
         }
         _parsingContext.setCurrentName(_currentField.name);
         // otherwise quickly validate compatibility
@@ -765,10 +770,16 @@ public class ProtobufParser extends ParserMinimalBase
     private JsonToken _handleNestedKey(int tag) throws IOException
     {
         int wireType = (tag & 0x7);
+        int id = (tag >> 3);
 
-        _currentField = _currentMessage.field(tag >> 3);
-        if (_currentField == null) {
-            return _skipUnknownField(tag>>3, wireType);
+        ProtobufField f;
+        
+        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+            f = _currentMessage.field(id);
+        }
+        _currentField = f;
+        if (f == null) {
+            return _skipUnknownField(id, wireType);
         }
         _parsingContext.setCurrentName(_currentField.name);
         if (!_currentField.isValidFor(wireType)) {
@@ -1020,9 +1031,15 @@ public class ProtobufParser extends ParserMinimalBase
             // inlined _handleRootKey()
 
             int wireType = (tag & 0x7);
-            _currentField = _currentMessage.field(tag >> 3);
-            if (_currentField == null) {
-                _skipUnknownField(tag >> 3, wireType);
+            int id = (tag >> 3);
+
+            ProtobufField f;
+            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+                f = _currentMessage.field(id);
+            }
+            _currentField = f;
+            if (f == null) {
+                _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
                 return false;
             }
@@ -1057,10 +1074,15 @@ public class ProtobufParser extends ParserMinimalBase
             // inlined '_handleNestedKey()'
 
             int wireType = (tag & 0x7);
+            int id = (tag >> 3);
 
-            _currentField = _currentMessage.field(tag >> 3);
-            if (_currentField == null) {
-                _skipUnknownField(tag>>3, wireType);
+            ProtobufField f;
+            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+                f = _currentMessage.field(id);
+            }
+            _currentField = f;
+            if (f == null) {
+                _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
                 return false;
             }
@@ -1101,9 +1123,16 @@ public class ProtobufParser extends ParserMinimalBase
             // inlined _handleRootKey()
 
             int wireType = (tag & 0x7);
-            _currentField = _currentMessage.field(tag >> 3);
-            if (_currentField == null) {
-                _skipUnknownField(tag >> 3, wireType);
+            int id = (tag >> 3);
+
+            ProtobufField f;
+            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+                f = _currentMessage.field(id);
+            }
+            _currentField = f;
+            _currentField = _currentMessage.field(id);
+            if (f == null) {
+                _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
                 return null;
             }
@@ -1138,10 +1167,16 @@ public class ProtobufParser extends ParserMinimalBase
             // inlined '_handleNestedKey()'
 
             int wireType = (tag & 0x7);
+            int id = (tag >> 3);
 
-            _currentField = _currentMessage.field(tag >> 3);
-            if (_currentField == null) {
-                _skipUnknownField(tag>>3, wireType);
+            ProtobufField f;
+            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+                f = _currentMessage.field(id);
+            }
+            _currentField = f;
+            _currentField = _currentMessage.field(id);
+            if (f == null) {
+                _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
                 return null;
             }

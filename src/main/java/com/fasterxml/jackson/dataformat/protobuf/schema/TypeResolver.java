@@ -154,6 +154,7 @@ public class TypeResolver
         for (int i = 0, end = f.size()-1; i < end; ++i) {
             f.get(i).assignNext(f.get(i+1));
         }
+        message.init();        
         return message;
     }    
 

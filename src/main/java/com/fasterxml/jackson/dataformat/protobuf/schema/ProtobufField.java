@@ -149,6 +149,19 @@ public class ProtobufField implements Comparable<ProtobufField>
         return messageType;
     }
 
+    public ProtobufField nextIf(int idToMatch) {
+        if ((next != null) && (next.id == idToMatch)) {
+            return next;
+        }
+        /*
+        // or maybe we actually have the id?
+        if (idToMatch == id) {
+            return this;
+        }
+        */
+        return null;
+    }
+
     public int findEnumIndex(SerializableString key) {
         // !!! TODO: optimize if possible
         Integer I = enumValues.get(key.getValue());

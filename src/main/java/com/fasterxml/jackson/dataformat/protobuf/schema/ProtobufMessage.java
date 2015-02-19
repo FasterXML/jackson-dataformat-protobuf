@@ -7,7 +7,8 @@ import com.fasterxml.jackson.core.SerializableString;
 public class ProtobufMessage
 {
     private final static ProtobufField[] NO_FIELDS = new ProtobufField[0];
-    
+//    private final static int[] NO_INTS = new int[0];
+
     protected final String _name;
 
     /**
@@ -19,6 +20,8 @@ public class ProtobufMessage
 
     protected final ProtobufField[] _fields;
 
+    protected ProtobufField _firstField;
+
     public ProtobufMessage(String name, Map<String,ProtobufField> fieldsByName,
             ProtobufField[] fields)
     {
@@ -27,10 +30,24 @@ public class ProtobufMessage
         _fields = fields;
     }
 
-    public static ProtobufMessage bogusMessage(String desc) {
-        return new ProtobufMessage(desc, Collections.<String,ProtobufField>emptyMap(), NO_FIELDS);
+    /**
+     * Method called right after finishing actual construction of this
+     * message definition. Needed because assignment to fields is dynamic,
+     * and setup is NOT complete when constructor exits.
+     */
+    public void init()
+    {
+        _firstField = (_fields.length == 0) ? null : _fields[0];
     }
 
+    public static ProtobufMessage bogusMessage(String desc) {
+        ProtobufMessage bogus = new ProtobufMessage(desc, Collections.<String,ProtobufField>emptyMap(), NO_FIELDS);
+        bogus.init();
+        return bogus;
+    }
+
+    public ProtobufField firstField() { return _firstField; }
+    
     public int getFieldCount() { return _fields.length; }
 
     public String getName() { return _name; }
@@ -40,7 +57,8 @@ public class ProtobufMessage
     }
 
     // !!! TODO: optimize?
-    public ProtobufField field(int id) {
+    public ProtobufField field(int id)
+    {
         for (int i = 0, len = _fields.length; i < len; ++i) {
             ProtobufField f = _fields[i];
             if (f.id == id) {
@@ -55,7 +73,7 @@ public class ProtobufMessage
     public ProtobufField field(SerializableString name) {
         return _fieldsByName.get(name.getValue());
     }
-    
+
     public String fieldsAsString() {
         return _fieldsByName.keySet().toString();
     }

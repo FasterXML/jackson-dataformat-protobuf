@@ -88,7 +88,7 @@ abstract class ProtobufTestBase extends TestCase
 "  repeated Image images = 2;\n"+
 "}\n"+
 "message Image {\n"+
-"  required string uri = 3;\n"+
+"  required string uri = 1;\n"+
 "  optional string title = 4;\n"+
 "  required int32 width = 5;\n"+
 "  required int32 height = 6;\n"+
@@ -99,7 +99,7 @@ abstract class ProtobufTestBase extends TestCase
 "  required Size size = 7;\n"+
 "}\n"+
 "message Media {\n"+
-"  required string uri = 10;\n"+
+"  required string uri = 1;\n"+
 "  optional string title = 11;\n"+
 "  required int32 width = 12;\n"+
 "  required int32 height = 13;\n"+
