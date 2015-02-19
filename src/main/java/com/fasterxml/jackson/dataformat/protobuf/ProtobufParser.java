@@ -449,12 +449,7 @@ public class ProtobufParser extends ParserMinimalBase
         if (_currToken == JsonToken.START_OBJECT || _currToken == JsonToken.START_ARRAY) {
             ctxt = ctxt.getParent();
         }
-        // Unfortunate, but since we did not expose exceptions, need to wrap
-        try {
-            ctxt.setCurrentName(name);
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        ctxt.setCurrentName(name);
     }
     
     @Override
@@ -651,6 +646,7 @@ public class ProtobufParser extends ParserMinimalBase
                         _reportInvalidEOF();
                     }
                     _parsingContext = parent;
+                    _currentField = parent.getField();
                     _state = STATE_MESSAGE_END;
                     return (_currToken = JsonToken.END_ARRAY);
                 }
@@ -666,8 +662,10 @@ public class ProtobufParser extends ParserMinimalBase
                 }
                 // otherwise, different field, need to end this array
                 _nextTag = tag;
+                ProtobufReadContext parent = _parsingContext.getParent();
+                _parsingContext = parent;
+                _currentField = parent.getField();
                 _state = STATE_ARRAY_END;
-                _parsingContext = _parsingContext.getParent();
                 return (_currToken = JsonToken.END_ARRAY);
             }
 
@@ -724,10 +722,10 @@ public class ProtobufParser extends ParserMinimalBase
         _parsingContext = parentCtxt;
         _currentMessage = parentCtxt.getMessageType();
         _currentEndOffset = parentCtxt.getEndOffset();
+        _currentField = parentCtxt.getField();
         if (_parsingContext.inRoot()) {
             _state =  STATE_ROOT_KEY;
         } else if (_parsingContext.inArray()) {
-            _currentField = parentCtxt.getField();
             // !!! TODO: distinguish between packed, unpacked!!!
             _state = _currentField.packed ? STATE_ARRAY_VALUE_PACKED : STATE_ARRAY_VALUE_OTHER;
         } else {
@@ -926,7 +924,7 @@ public class ProtobufParser extends ParserMinimalBase
                 }
                 _currentEndOffset = newEnd; 
                 _state = STATE_NESTED_KEY;
-                _parsingContext = _parsingContext.createChildObjectContext(msg, newEnd);            
+                _parsingContext = _parsingContext.createChildObjectContext(msg, _currentField, newEnd);            
             }
             return JsonToken.START_OBJECT;
         

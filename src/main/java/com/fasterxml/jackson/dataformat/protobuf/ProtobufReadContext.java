@@ -77,6 +77,7 @@ public final class ProtobufReadContext
 
     public ProtobufReadContext createChildArrayContext(ProtobufField f)
     {
+        _field = f;
         ProtobufReadContext ctxt = _child;
         if (ctxt == null) {
             _child = ctxt = new ProtobufReadContext(this, _messageType,
@@ -84,12 +85,12 @@ public final class ProtobufReadContext
         } else {
             ctxt.reset(_messageType, TYPE_ARRAY, _endOffset);
         }
-        ctxt._field = f;
         return ctxt;
     }
 
     public ProtobufReadContext createChildArrayContext(ProtobufField f, int endOffset)
     {
+        _field = f;
         ProtobufReadContext ctxt = _child;
         if (ctxt == null) {
             _child = ctxt = new ProtobufReadContext(this, _messageType,
@@ -101,8 +102,10 @@ public final class ProtobufReadContext
         return ctxt;
     }
     
-    public ProtobufReadContext createChildObjectContext(ProtobufMessage messageType, int endOffset)
+    public ProtobufReadContext createChildObjectContext(ProtobufMessage messageType,
+            ProtobufField f, int endOffset)
     {
+        _field = f;
         ProtobufReadContext ctxt = _child;
         if (ctxt == null) {
             _child = ctxt = new ProtobufReadContext(this, messageType,
@@ -154,8 +157,7 @@ public final class ProtobufReadContext
     /**********************************************************
      */
 
-    public void setCurrentName(String name) throws JsonProcessingException
-    {
+    public void setCurrentName(String name) {
         _currentName = name;
     }
 
