@@ -576,6 +576,7 @@ public class ProtobufParser extends ParserMinimalBase
                 _reportError("No Schema has been assigned: can not decode content");
             }
             _currentMessage = _schema.getRootType();
+            _currentField = _currentMessage.firstField();
             _state = STATE_ROOT_KEY;
             _parsingContext.setMessageType(_currentMessage);            
             return (_currToken = JsonToken.START_OBJECT);
@@ -738,12 +739,7 @@ public class ProtobufParser extends ParserMinimalBase
         int wireType = (tag & 0x7);
         int id = (tag >> 3);
 
-        ProtobufField f;
-        
-        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-            f = _currentMessage.field(id);
-        }
-        _currentField = f;
+        ProtobufField f = _findField(id);
         // Note: may be null; if so, value needs to be skipped
         if (f == null) {
             return _skipUnknownField(id, wireType);
@@ -772,12 +768,7 @@ public class ProtobufParser extends ParserMinimalBase
         int wireType = (tag & 0x7);
         int id = (tag >> 3);
 
-        ProtobufField f;
-        
-        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-            f = _currentMessage.field(id);
-        }
-        _currentField = f;
+        ProtobufField f = _findField(id);
         if (f == null) {
             return _skipUnknownField(id, wireType);
         }
@@ -936,6 +927,7 @@ public class ProtobufParser extends ParserMinimalBase
                 _currentEndOffset = newEnd; 
                 _state = STATE_NESTED_KEY;
                 _parsingContext = _parsingContext.createChildObjectContext(msg, _currentField, newEnd);            
+                _currentField = msg.firstField();
             }
             return JsonToken.START_OBJECT;
         
@@ -1033,11 +1025,7 @@ public class ProtobufParser extends ParserMinimalBase
             int wireType = (tag & 0x7);
             int id = (tag >> 3);
 
-            ProtobufField f;
-            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-                f = _currentMessage.field(id);
-            }
-            _currentField = f;
+            ProtobufField f = _findField(id);
             if (f == null) {
                 _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
@@ -1076,11 +1064,7 @@ public class ProtobufParser extends ParserMinimalBase
             int wireType = (tag & 0x7);
             int id = (tag >> 3);
 
-            ProtobufField f;
-            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-                f = _currentMessage.field(id);
-            }
-            _currentField = f;
+            ProtobufField f = _findField(id);
             if (f == null) {
                 _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
@@ -1125,12 +1109,7 @@ public class ProtobufParser extends ParserMinimalBase
             int wireType = (tag & 0x7);
             int id = (tag >> 3);
 
-            ProtobufField f;
-            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-                f = _currentMessage.field(id);
-            }
-            _currentField = f;
-            _currentField = _currentMessage.field(id);
+            ProtobufField f = _findField(id);
             if (f == null) {
                 _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
@@ -1169,12 +1148,7 @@ public class ProtobufParser extends ParserMinimalBase
             int wireType = (tag & 0x7);
             int id = (tag >> 3);
 
-            ProtobufField f;
-            if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-                f = _currentMessage.field(id);
-            }
-            _currentField = f;
-            _currentField = _currentMessage.field(id);
+            ProtobufField f = _findField(id);
             if (f == null) {
                 _skipUnknownField(id, wireType);
                 // may or may not match, but let caller figure it out
@@ -1201,7 +1175,17 @@ public class ProtobufParser extends ParserMinimalBase
         }
         return super.nextFieldName();
     }
-    
+
+    private final ProtobufField _findField(int id)
+    {
+        ProtobufField f;
+        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+            f = _currentMessage.field(id);
+        }
+        _currentField = f;
+        return f;
+    }
+
     /*
     /**********************************************************
     /* Public API, access to token information, text
@@ -1654,14 +1638,6 @@ public class ProtobufParser extends ParserMinimalBase
             _throwInternal();
         }
         _numTypesValid |= NR_BIGDECIMAL;
-    }
-
-    protected void reportOverflowInt() throws IOException {
-        _reportError("Numeric value ("+getText()+") out of range of int ("+Integer.MIN_VALUE+" - "+Integer.MAX_VALUE+")");
-    }
-    
-    protected void reportOverflowLong() throws IOException {
-        _reportError("Numeric value ("+getText()+") out of range of long ("+Long.MIN_VALUE+" - "+Long.MAX_VALUE+")");
     }
 
     /*
@@ -2333,6 +2309,16 @@ public class ProtobufParser extends ParserMinimalBase
     /**********************************************************
      */
 
+    protected void reportOverflowInt() throws IOException {
+        _reportErrorF("Numeric value (%s) out of range of int (%d - %d)",
+                getText(), Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+    
+    protected void reportOverflowLong() throws IOException {
+        _reportErrorF("Numeric value (%s) out of range of long (%d - %d)",
+                getText(), Long.MIN_VALUE, Long.MAX_VALUE);
+    }
+    
     private void _reportErrorF(String format, Object... args) throws JsonParseException {
         _reportError(String.format(format, args));
     }

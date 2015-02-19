@@ -153,12 +153,10 @@ public class ProtobufField implements Comparable<ProtobufField>
         if ((next != null) && (next.id == idToMatch)) {
             return next;
         }
-        /*
         // or maybe we actually have the id?
         if (idToMatch == id) {
             return this;
         }
-        */
         return null;
     }
 
