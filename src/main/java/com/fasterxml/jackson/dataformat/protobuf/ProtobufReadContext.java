@@ -118,7 +118,7 @@ public final class ProtobufReadContext
 
     /*
     /**********************************************************
-    /* Abstract method implementation
+    /* Abstract method implementations
     /**********************************************************
      */
 
@@ -134,6 +134,33 @@ public final class ProtobufReadContext
     /**********************************************************
      */
 
+    /**
+     * Method called when loading more input, or moving existing data;
+     * this requires adjusting relative end offset as well, except for
+     * root context.
+     */
+    public int adjustEnd(int bytesConsumed) {
+        if (_type == TYPE_ROOT) {
+            return _endOffset;
+        }
+        int newOffset = _endOffset - bytesConsumed;
+
+        _endOffset = newOffset;
+
+        for (ProtobufReadContext ctxt = _parent; ctxt != null; ctxt = ctxt.getParent()) {
+            ctxt._adjustEnd(bytesConsumed);
+        }
+
+        // could do sanity check here; but caller should catch it
+        return newOffset;
+    }
+
+    private void _adjustEnd(int bytesConsumed) {
+        if (_type != TYPE_ROOT) {
+            _endOffset -= bytesConsumed;
+        }
+    }
+    
     public int getEndOffset() { return _endOffset; }
 
     public ProtobufMessage getMessageType() { return _messageType; }

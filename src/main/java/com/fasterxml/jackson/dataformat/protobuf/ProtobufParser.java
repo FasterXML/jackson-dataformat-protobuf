@@ -1865,13 +1865,14 @@ public class ProtobufParser extends ParserMinimalBase
 
     /*
     /**********************************************************
-    /* Low-level reading, other
+    /* Low-level reading: buffer reload
     /**********************************************************
      */
 
     protected final boolean loadMore() throws IOException
     {
         _currInputProcessed += _inputEnd;
+        _currentEndOffset = _parsingContext.adjustEnd(_inputEnd);
         
         if (_inputStream != null) {
             int count = _inputStream.read(_inputBuffer, 0, _inputBuffer.length);
@@ -1905,16 +1906,18 @@ public class ProtobufParser extends ParserMinimalBase
             throw _constructError("Needed to read "+minAvailable+" bytes, reached end-of-input");
         }
         // Need to move remaining data in front?
-        int amount = _inputEnd - _inputPtr;
-        if (amount > 0 && _inputPtr > 0) {
-            _currInputProcessed += _inputPtr;
-            //_currInputRowStart -= _inputPtr;
-            System.arraycopy(_inputBuffer, _inputPtr, _inputBuffer, 0, amount);
-            _inputEnd = amount;
-        } else {
-            _inputEnd = 0;
+        int ptr = _inputPtr;
+        int amount = _inputEnd - ptr;
+        
+        if (ptr > 0) {
+            _currInputProcessed += ptr;
+            if (amount > 0) {
+                System.arraycopy(_inputBuffer, ptr, _inputBuffer, 0, amount);
+            }
+            _currentEndOffset = _parsingContext.adjustEnd(ptr);
         }
         _inputPtr = 0;
+        _inputEnd = amount;
         while (_inputEnd < minAvailable) {
             int count = _inputStream.read(_inputBuffer, _inputEnd, _inputBuffer.length - _inputEnd);
             if (count < 1) {
@@ -1930,6 +1933,12 @@ public class ProtobufParser extends ParserMinimalBase
         }
     }
 
+    /*
+    /**********************************************************
+    /* Low-level reading: other
+    /**********************************************************
+     */
+    
     protected ByteArrayBuilder _getByteArrayBuilder() {
         if (_byteArrayBuilder == null) {
             _byteArrayBuilder = new ByteArrayBuilder();
