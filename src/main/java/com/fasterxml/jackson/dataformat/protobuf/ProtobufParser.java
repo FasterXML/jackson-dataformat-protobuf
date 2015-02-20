@@ -768,10 +768,15 @@ public class ProtobufParser extends ParserMinimalBase
         int wireType = (tag & 0x7);
         int id = (tag >> 3);
 
-        ProtobufField f = _findField(id);
+        // Inlined _findField(id)
+        ProtobufField f;
+        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+            f = _currentMessage.field(id);
+        }
         if (f == null) {
             return _skipUnknownField(id, wireType);
         }
+        _currentField = f;
         _parsingContext.setCurrentName(_currentField.name);
         if (!_currentField.isValidFor(wireType)) {
             _reportIncompatibleType(_currentField, wireType);
