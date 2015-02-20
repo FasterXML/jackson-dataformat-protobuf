@@ -33,6 +33,7 @@ abstractions.
     -->
     <osgi.export>${project.groupId}.protobuf.*; version=${project.version}
 </osgi.export>
+    <osgi.private>com.squareup.protoparser.*</osgi.private>
 
   </properties>
 
@@ -49,13 +50,6 @@ abstractions.
       <artifactId>jackson-databind</artifactId>
       <version>${jackson.version.core}</version>
     </dependency>
-<!--
-    <dependency>
-      <groupId>com.dyuproject.protostuff</groupId>
-      <artifactId>protostuff-parser</artifactId>
-      <version>1.0.7</version>
-    </dependency>
--->
 	<dependency>
 	  <groupId>com.squareup</groupId>
 	  <artifactId>protoparser</artifactId>
@@ -84,6 +78,39 @@ abstractions.
           </execution>
         </executions>
      </plugin>
+
+      <plugin>
+        <!--  We will shade proto-parser, to simplify deployment, avoid version conflicts -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <!-- the bundle plugin already did the pulling-in, all we need is the renaming! -->
+             <!-- 
+                  <include>com.squareup:protoparser</include>
+-->             
+                  <include>null:null</include>
+                </includes>
+              </artifactSet>
+              <relocations>
+                <relocation>
+                  <pattern>com.squareup</pattern>
+                  <shadedPattern>com.fasterxml.jackson.dataformat.protobuf.protoparser</shadedPattern>
+                </relocation>
+              </relocations>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      
    </plugins>
   </build>
 
