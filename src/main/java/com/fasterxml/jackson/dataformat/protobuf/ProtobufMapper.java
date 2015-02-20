@@ -8,7 +8,7 @@ public class ProtobufMapper extends ObjectMapper
 {
     private static final long serialVersionUID = 1L;
 
-    protected ProtobufSchemaLoader _schemaLoader;
+    protected ProtobufSchemaLoader _schemaLoader = ProtobufSchemaLoader.std;
 
     /*
     /**********************************************************
