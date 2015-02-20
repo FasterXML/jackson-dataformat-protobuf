@@ -739,17 +739,19 @@ public class ProtobufParser extends ParserMinimalBase
         int wireType = (tag & 0x7);
         int id = (tag >> 3);
 
-        ProtobufField f = _findField(id);
+        ProtobufField f;
+        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+            f = _currentMessage.field(id);
+        }
         // Note: may be null; if so, value needs to be skipped
         if (f == null) {
             return _skipUnknownField(id, wireType);
         }
         _parsingContext.setCurrentName(f.name);
         // otherwise quickly validate compatibility
-        if (!_currentField.isValidFor(wireType)) {
+        if (!f.isValidFor(wireType)) {
             _reportIncompatibleType(f, wireType);
         }
-
         // array?
         if (f.repeated) {
             if (f.packed) {
@@ -760,6 +762,7 @@ public class ProtobufParser extends ParserMinimalBase
         } else {
             _state = STATE_ROOT_VALUE;
         }
+        _currentField = f;
         return (_currToken = JsonToken.FIELD_NAME);
     }
 
@@ -768,9 +771,9 @@ public class ProtobufParser extends ParserMinimalBase
         int wireType = (tag & 0x7);
         int id = (tag >> 3);
 
-        ProtobufField f = _findField(id);
-        if (f == null) {
-            return _skipUnknownField(id, wireType);
+        ProtobufField f;
+        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+            f = _currentMessage.field(id);
         }
         _parsingContext.setCurrentName(f.name);
         if (!f.isValidFor(wireType)) {
@@ -787,6 +790,7 @@ public class ProtobufParser extends ParserMinimalBase
         } else {
             _state = STATE_NESTED_VALUE;
         }
+        _currentField = f;
         return (_currToken = JsonToken.FIELD_NAME);
     }
     
@@ -1182,7 +1186,6 @@ public class ProtobufParser extends ParserMinimalBase
         if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
             f = _currentMessage.field(id);
         }
-//        f = _currentMessage.field(id);
         _currentField = f;
         return f;
     }
