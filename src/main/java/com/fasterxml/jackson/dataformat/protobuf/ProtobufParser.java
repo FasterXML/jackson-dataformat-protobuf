@@ -2132,16 +2132,9 @@ public class ProtobufParser extends ParserMinimalBase
     
     protected int _decodeVIntSlow() throws IOException
     {
-        if (_inputPtr >= _inputEnd) {
-            loadMoreGuaranteed();
-        }
-        int v = _inputBuffer[_inputPtr++];
-        if (v >= 0) {
-            return v;
-        }
-        v &= 0x7F;
-        int shift = 7;
-
+        int v = 0;
+        int shift = 0;
+        
         while (true) {
             if (_inputPtr >= _inputEnd) {
                 loadMoreGuaranteed();
