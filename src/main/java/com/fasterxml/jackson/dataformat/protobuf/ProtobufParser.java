@@ -600,9 +600,6 @@ public class ProtobufParser extends ParserMinimalBase
             if (_checkEnd()) {
                 return (_currToken = JsonToken.END_OBJECT);
             }
-            if (_inputPtr >= _inputEnd) {
-                loadMoreGuaranteed();
-            }
             return _handleNestedKey(_decodeVInt());
 
         case STATE_ARRAY_START:
@@ -1059,9 +1056,6 @@ public class ProtobufParser extends ParserMinimalBase
                 _currToken = JsonToken.END_OBJECT;
                 return false;
             }
-            if (_inputPtr >= _inputEnd) {
-                loadMoreGuaranteed();
-            }
             int tag = _decodeVInt();
             // inlined '_handleNestedKey()'
 
@@ -1142,9 +1136,6 @@ public class ProtobufParser extends ParserMinimalBase
             if (_checkEnd()) {
                 _currToken = JsonToken.END_OBJECT;
                 return null;
-            }
-            if (_inputPtr >= _inputEnd) {
-                loadMoreGuaranteed();
             }
             int tag = _decodeVInt();
             // inlined '_handleNestedKey()'
