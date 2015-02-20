@@ -2108,7 +2108,7 @@ public class ProtobufParser extends ParserMinimalBase
                         // and now the last byte; at most 4 bits
                         int last = buf[ptr++] & 0xFF;
                         
-                        if (last > 0x1F) { // should have at most 5 one bits
+                        if (last > 0x0F) {
                             _inputPtr = ptr;
                             _reportTooLongVInt(last);
                         }
@@ -2132,17 +2132,24 @@ public class ProtobufParser extends ParserMinimalBase
     
     protected int _decodeVIntSlow() throws IOException
     {
-        int v = 0;
-        int shift = 0;
+        if (_inputPtr >= _inputEnd) {
+            loadMoreGuaranteed();
+        }
+        int v = _inputBuffer[_inputPtr++];
+        if (v >= 0) {
+            return v;
+        }
+        v &= 0x7F;
+        int shift = 7;
 
         while (true) {
             if (_inputPtr >= _inputEnd) {
                 loadMoreGuaranteed();
             }
             int ch = _inputBuffer[_inputPtr++];
-            if (shift >= 35) { // must end
+            if (shift >= 28) { // must end
                 ch &= 0xFF;
-                if (ch > 0x1F) { // should have at most 5 one bits
+                if (ch > 0x0F) { // should have at most 4 one bits
                     _reportTooLongVInt(ch);
                 }
             }
