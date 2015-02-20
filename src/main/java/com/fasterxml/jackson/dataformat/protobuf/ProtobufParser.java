@@ -744,15 +744,15 @@ public class ProtobufParser extends ParserMinimalBase
         if (f == null) {
             return _skipUnknownField(id, wireType);
         }
-        _parsingContext.setCurrentName(_currentField.name);
+        _parsingContext.setCurrentName(f.name);
         // otherwise quickly validate compatibility
         if (!_currentField.isValidFor(wireType)) {
-            _reportIncompatibleType(_currentField, wireType);
+            _reportIncompatibleType(f, wireType);
         }
 
         // array?
-        if (_currentField.repeated) {
-            if (_currentField.packed) {
+        if (f.repeated) {
+            if (f.packed) {
                 _state = STATE_ARRAY_START_PACKED;
             } else {
                 _state = STATE_ARRAY_START;
@@ -768,23 +768,18 @@ public class ProtobufParser extends ParserMinimalBase
         int wireType = (tag & 0x7);
         int id = (tag >> 3);
 
-        // Inlined _findField(id)
-        ProtobufField f;
-        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
-            f = _currentMessage.field(id);
-        }
+        ProtobufField f = _findField(id);
         if (f == null) {
             return _skipUnknownField(id, wireType);
         }
-        _currentField = f;
-        _parsingContext.setCurrentName(_currentField.name);
-        if (!_currentField.isValidFor(wireType)) {
-            _reportIncompatibleType(_currentField, wireType);
+        _parsingContext.setCurrentName(f.name);
+        if (!f.isValidFor(wireType)) {
+            _reportIncompatibleType(f, wireType);
         }
 
         // array?
-        if (_currentField.repeated) {
-            if (_currentField.packed) {
+        if (f.repeated) {
+            if (f.packed) {
                 _state = STATE_ARRAY_START_PACKED;
             } else {
                 _state = STATE_ARRAY_START;
