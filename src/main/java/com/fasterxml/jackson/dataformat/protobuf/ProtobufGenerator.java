@@ -639,17 +639,19 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public final void writeString(SerializableString sstr) throws IOException
     {
-        if (_currField.wireType != WireType.LENGTH_PREFIXED) {
-            if (_currField.type == FieldType.ENUM) {
-                _writeEnum(sstr);
-            } else {
-                _reportWrongWireType("string");
-            }
-            return;
-        }
         _verifyValueWrite();
-        byte[] b = sstr.asUnquotedUTF8();
-        _writeLengthPrefixed(b,  0, b.length);
+        if (_currField.wireType == WireType.LENGTH_PREFIXED) {
+            byte[] b = sstr.asUnquotedUTF8();
+            _writeLengthPrefixed(b,  0, b.length);
+        } else  if (_currField.type == FieldType.ENUM) {
+            int index = _currField.findEnumIndex(sstr);
+            if (index < 0) {
+                _reportEnumError(sstr);
+            }
+            _writeEnum(index);
+        } else {
+            _reportWrongWireType("string");
+        }
     }
 
     @Override
@@ -701,12 +703,8 @@ public class ProtobufGenerator extends GeneratorBase
         _currPtr = ptr;
     }
 
-    protected void _writeEnum(SerializableString sstr) throws IOException
+    protected void _writeEnum(int index) throws IOException
     {
-        int index = _currField.findEnumIndex(sstr);
-        if (index < 0) {
-            _reportEnumError(sstr.getValue());
-        }
         // basically, _writeVInt, but very likely to be very short; but if not:
         final int tag = _currField.typedTag;
         int ptr = _currPtr;
@@ -720,10 +718,10 @@ public class ProtobufGenerator extends GeneratorBase
         _currPtr = ptr;
     }
 
-    protected void _reportEnumError(String enumStr) throws IOException
+    protected void _reportEnumError(Object enumValue) throws IOException
     {
-        _reportError("No Enum '"+enumStr+"' found for property '"+_currField.name+"'; valid values = "
-                +_currField.getEnumValues());
+        _reportErrorF("No Enum '%s' found for property '%s'; valid values = %s"
+                +_currField.getEnumValues(), _currField.name, enumValue);
     }
 
     /*
@@ -1377,9 +1375,14 @@ public class ProtobufGenerator extends GeneratorBase
         if (_currField == UNKNOWN_FIELD) {
             return;
         }
-        _reportError("Can not write `string` value for '"+_currField.name+"' (type "+_currField.type+")");
+        _reportErrorF("Can not write `string` value for '%s' (type %s)",
+                _currField.name, _currField.type);
     }
-    
+
+    private void _reportErrorF(String format, Object... args) throws JsonGenerationException {
+        _reportError(String.format(format, args));
+    }
+
     private void _throwIllegalSurrogate(int code)
     {
         if (code > 0x10FFFF) { // over max?

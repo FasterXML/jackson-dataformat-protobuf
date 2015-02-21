@@ -1087,7 +1087,7 @@ public class ProtobufParser extends ParserMinimalBase
             _currToken = JsonToken.FIELD_NAME;
             return name.equals(sstr.getValue());
         }
-        return super.nextFieldName(sstr);
+        return (nextToken() == JsonToken.FIELD_NAME) && sstr.getValue().equals(getCurrentName());
     }
 
     @Override
@@ -1168,7 +1168,7 @@ public class ProtobufParser extends ParserMinimalBase
             _currToken = JsonToken.FIELD_NAME;
             return name;
         }
-        return super.nextFieldName();
+        return (nextToken() == JsonToken.FIELD_NAME) ? getCurrentName() : null;
     }
 
     private final ProtobufField _findField(int id)
@@ -2317,12 +2317,12 @@ public class ProtobufParser extends ParserMinimalBase
         _reportErrorF("Numeric value (%s) out of range of int (%d - %d)",
                 getText(), Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
-    
+
     protected void reportOverflowLong() throws IOException {
         _reportErrorF("Numeric value (%s) out of range of long (%d - %d)",
                 getText(), Long.MIN_VALUE, Long.MAX_VALUE);
     }
-    
+
     private void _reportErrorF(String format, Object... args) throws JsonParseException {
         _reportError(String.format(format, args));
     }
