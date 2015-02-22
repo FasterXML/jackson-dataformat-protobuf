@@ -215,13 +215,15 @@ public class ProtobufGenerator extends GeneratorBase
             _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
         }
         ProtobufField f = _currField;
-        if (f != null) {
+        // important: use current field only if NOT repeated field; repeated
+        // field means an array until START_OBJECT
+        if (f != null && !f.repeated) {
             f = f.nextIf(name);
+            if (f == null) {
+                f = _currMessage.field(name);
+            }
         } else  {
             f = _currMessage.firstIf(name);
-        }
-        if (f == null) {
-            f = _currMessage.field(name);
         }
         if (f == null) {
             // May be ok, if we have said so
@@ -245,13 +247,17 @@ public class ProtobufGenerator extends GeneratorBase
         }
         ProtobufField f = _currField;
         final String name = sstr.getValue();
-        if (f != null) {
+        // important: use current field only if NOT repeated field; repeated
+        // field means an array until START_OBJECT
+        // NOTE: not ideal -- depends on if it really is sibling field of an array,
+        // or an entry within
+        if (f != null && !f.repeated) {
             f = f.nextIf(name);
+            if (f == null) {
+                f = _currMessage.field(name);
+            }
         } else  {
             f = _currMessage.firstIf(name);
-        }
-        if (f == null) {
-            f = _currMessage.field(name);
         }
         if (f == null) {
             // May be ok, if we have said so

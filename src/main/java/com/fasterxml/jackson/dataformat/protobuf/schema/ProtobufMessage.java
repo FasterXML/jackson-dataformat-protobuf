@@ -91,7 +91,8 @@ public class ProtobufMessage
         if (f != null && name.equals(f.name)) {
             return f;
         }
-        return null;
+        // regardless, find the field
+        return _fieldsByName.get(name);
     }
     
     public int getFieldCount() { return _fields.length; }
