@@ -216,13 +216,11 @@ public class ProtobufGenerator extends GeneratorBase
         }
         ProtobufField f = _currField;
         if (f != null) {
-            ProtobufField next = f.nextIf(name);
-            if (next != null) {
-                f = next;
-            } else {
-                f = _currMessage.field(name);
-            }
+            f = f.nextIf(name);
         } else  {
+            f = _currMessage.firstIf(name);
+        }
+        if (f == null) {
             f = _currMessage.field(name);
         }
         if (f == null) {
@@ -241,20 +239,18 @@ public class ProtobufGenerator extends GeneratorBase
     }
 
     @Override
-    public final void writeFieldName(SerializableString name) throws IOException {
+    public final void writeFieldName(SerializableString sstr) throws IOException {
         if (!_inObject) {
             _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
         }
         ProtobufField f = _currField;
-        
+        final String name = sstr.getValue();
         if (f != null) {
-            ProtobufField next = f.nextIf(name.getValue());
-            if (next != null) {
-                f = next;
-            } else {
-                f = _currMessage.field(name);
-            }
+            f = f.nextIf(name);
         } else  {
+            f = _currMessage.firstIf(name);
+        }
+        if (f == null) {
             f = _currMessage.field(name);
         }
         if (f == null) {

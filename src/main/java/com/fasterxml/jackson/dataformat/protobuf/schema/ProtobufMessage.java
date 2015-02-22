@@ -85,6 +85,14 @@ public class ProtobufMessage
     }
 
     public ProtobufField firstField() { return _firstField; }
+
+    public ProtobufField firstIf(String name) {
+        ProtobufField f = _firstField;
+        if (f != null && name.equals(f.name)) {
+            return f;
+        }
+        return null;
+    }
     
     public int getFieldCount() { return _fields.length; }
 
