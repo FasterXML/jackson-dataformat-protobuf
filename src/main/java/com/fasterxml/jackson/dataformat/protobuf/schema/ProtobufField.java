@@ -151,7 +151,7 @@ public class ProtobufField
         return messageType;
     }
 
-    public ProtobufField nextIf(int idToMatch) {
+    public ProtobufField nextOrThisIf(int idToMatch) {
         if ((next != null) && (next.id == idToMatch)) {
             return next;
         }
@@ -162,6 +162,15 @@ public class ProtobufField
         return null;
     }
 
+    public ProtobufField nextIf(String nameToMatch) {
+        if (next != null) {
+            if ((nameToMatch == next.name) || nameToMatch.equals(next.name)) {
+                return next;
+            }
+        }
+        return null;
+    }
+    
     public int findEnumIndex(SerializableString key) {
         // !!! TODO: optimize if possible
         Integer I = enumValues.get(key.getValue());

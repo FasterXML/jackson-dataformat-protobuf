@@ -737,7 +737,7 @@ public class ProtobufParser extends ParserMinimalBase
         int id = (tag >> 3);
 
         ProtobufField f;
-        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+        if ((_currentField == null) || (f = _currentField.nextOrThisIf(id)) == null) {
             f = _currentMessage.field(id);
         }
         // Note: may be null; if so, value needs to be skipped
@@ -769,7 +769,7 @@ public class ProtobufParser extends ParserMinimalBase
         int id = (tag >> 3);
 
         ProtobufField f;
-        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+        if ((_currentField == null) || (f = _currentField.nextOrThisIf(id)) == null) {
             f = _currentMessage.field(id);
         }
         _parsingContext.setCurrentName(f.name);
@@ -1174,7 +1174,7 @@ public class ProtobufParser extends ParserMinimalBase
     private final ProtobufField _findField(int id)
     {
         ProtobufField f;
-        if ((_currentField == null) || (f = _currentField.nextIf(id)) == null) {
+        if ((_currentField == null) || (f = _currentField.nextOrThisIf(id)) == null) {
             f = _currentMessage.field(id);
         }
         _currentField = f;

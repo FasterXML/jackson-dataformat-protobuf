@@ -214,7 +214,17 @@ public class ProtobufGenerator extends GeneratorBase
         if (!_inObject) {
             _reportError("Can not write field name: current context not an OBJECT but "+_pbContext.getTypeDesc());
         }
-        ProtobufField f = _currMessage.field(name);
+        ProtobufField f = _currField;
+        if (f != null) {
+            ProtobufField next = f.nextIf(name);
+            if (next != null) {
+                f = next;
+            } else {
+                f = _currMessage.field(name);
+            }
+        } else  {
+            f = _currMessage.field(name);
+        }
         if (f == null) {
             // May be ok, if we have said so
             if ((_currMessage == UNKNOWN_MESSAGE)
@@ -238,8 +248,8 @@ public class ProtobufGenerator extends GeneratorBase
         ProtobufField f = _currField;
         
         if (f != null) {
-            ProtobufField next = f.next;
-            if (next != null && next.name.equals(name.getValue())) {
+            ProtobufField next = f.nextIf(name.getValue());
+            if (next != null) {
                 f = next;
             } else {
                 f = _currMessage.field(name);
