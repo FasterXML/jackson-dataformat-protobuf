@@ -15,6 +15,8 @@ Protoc (protobuf IDL) parsing is done using [square/protoparser](https://github.
 
 # Status
 
+[![Build Status](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf.svg)](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf)
+
 (Jan-2014): Still in initial prototyping phase:
 
  * Basic integration of `protoparser` exists, looks like we can read protoc stuff as expected. * Starting to work on `ProtobufGenerator` first, seems slightly simpler
