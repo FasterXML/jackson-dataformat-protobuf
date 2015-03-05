@@ -217,7 +217,7 @@ public class ProtobufGenerator extends GeneratorBase
         ProtobufField f = _currField;
         // important: use current field only if NOT repeated field; repeated
         // field means an array until START_OBJECT
-        if (f != null && !f.repeated) {
+        if (f != null && _pbContext.notArray()) {
             f = f.nextIf(name);
             if (f == null) {
                 f = _currMessage.field(name);
@@ -251,7 +251,7 @@ public class ProtobufGenerator extends GeneratorBase
         // field means an array until START_OBJECT
         // NOTE: not ideal -- depends on if it really is sibling field of an array,
         // or an entry within
-        if (f != null && !f.repeated) {
+        if (f != null && _pbContext.notArray()) {
             f = f.nextIf(name);
             if (f == null) {
                 f = _currMessage.field(name);
