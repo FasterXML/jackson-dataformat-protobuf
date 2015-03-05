@@ -462,11 +462,7 @@ public class ProtobufGenerator extends GeneratorBase
         }
 
         if (_currField.wireType != WireType.LENGTH_PREFIXED) {
-            if (_currField.type == FieldType.ENUM) {
-                _writeEnum(text);
-            } else {
-                _reportWrongWireType("string");
-            }
+            _writeEnum(text);
             return;
         }
 
@@ -565,11 +561,7 @@ public class ProtobufGenerator extends GeneratorBase
             return;
         }
         if (_currField.wireType != WireType.LENGTH_PREFIXED) {
-            if (_currField.type == FieldType.ENUM) {
-                _writeEnum(new String(text, offset, clen));
-            } else {
-                _reportWrongWireType("string");
-            }
+            _writeEnum(new String(text, offset, clen));
         }
 
         // Could guarantee with 42 chars or less; but let's do bit more speculative
@@ -698,6 +690,10 @@ public class ProtobufGenerator extends GeneratorBase
 
     protected void _writeEnum(String str) throws IOException
     {
+        if (_currField.type != FieldType.ENUM) {
+            _reportWrongWireType("string");
+        }
+        // !!! TODO: optimize
         int index = _currField.findEnumIndex(str);
         if (index < 0) {
             _reportEnumError(str);
