@@ -1,9 +1,6 @@
 package com.fasterxml.jackson.dataformat.protobuf.schema;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import com.fasterxml.jackson.core.SerializableString;
 import com.squareup.protoparser.MessageType.Field;
@@ -46,14 +43,8 @@ public class ProtobufField
     /**
      * For fields of type {@link FieldType#ENUM}, mapping from names to ids.
      */
-    protected final Map<String,Integer> enumValues;
+    protected final EnumLookup enumValues;
 
-    /**
-     * For fields of type {@link FieldType#ENUM} with non-standard indexing,
-     * mapping back from tag ids to enum names.
-     */
-    protected final Map<Integer,String> enumsById;
-    
     /**
      * Link to next field within message definition; used for efficient traversal.
      * Due to inverse construction order need to be assigned after construction;
@@ -88,21 +79,11 @@ public class ProtobufField
         wireType = type.getWireType();
         usesZigZag = type.usesZigZag();
         if (et == null) {
-            enumValues = Collections.emptyMap();
+            enumValues = EnumLookup.empty();
             isStdEnum = false;
-            enumsById = null;
         } else {
-            enumValues = et.valueMapping();
+            enumValues = EnumLookup.construct(et);
             isStdEnum = et.usesStandardIndexing();
-            if (isStdEnum) {
-                enumsById = null;
-            } else {
-                LinkedHashMap<Integer,String> byId = new LinkedHashMap<Integer,String>();
-                for (Map.Entry<String,Integer> entry : enumValues.entrySet()) {
-                    byId.put(entry.getValue(), entry.getKey());
-                }
-                enumsById = byId;
-            }
         }
         messageType = msg;
 
@@ -147,11 +128,11 @@ public class ProtobufField
         this.next = n;
     }
 
-    public ProtobufMessage getMessageType() {
+    public final ProtobufMessage getMessageType() {
         return messageType;
     }
 
-    public ProtobufField nextOrThisIf(int idToMatch) {
+    public final ProtobufField nextOrThisIf(int idToMatch) {
         if ((next != null) && (next.id == idToMatch)) {
             return next;
         }
@@ -162,7 +143,7 @@ public class ProtobufField
         return null;
     }
 
-    public ProtobufField nextIf(String nameToMatch) {
+    public final ProtobufField nextIf(String nameToMatch) {
         if (next != null) {
             if ((nameToMatch == next.name) || nameToMatch.equals(next.name)) {
                 return next;
@@ -170,30 +151,27 @@ public class ProtobufField
         }
         return null;
     }
-    
-    public int findEnumIndex(SerializableString key) {
-        // !!! TODO: optimize if possible
-        Integer I = enumValues.get(key.getValue());
-        return (I == null) ? -1 : I.intValue();
+
+    public final int findEnumIndex(SerializableString key) {
+        return enumValues.findEnumIndex(key);
     }
 
-    public int findEnumIndex(String key) {
-        Integer I = enumValues.get(key);
-        return (I == null) ? -1 : I.intValue();
+    public final int findEnumIndex(String key) {
+        return enumValues.findEnumIndex(key);
     }
-    public String findEnumByIndex(int index) {
-        return enumsById.get(Integer.valueOf(index));
+    public final String findEnumByIndex(int index) {
+        return enumValues.findEnumByIndex(index);
     }
 
     public Collection<String> getEnumValues() {
-        return enumValues.keySet();
+        return enumValues.getEnumValues();
     }
 
-    public boolean isArray() {
+    public final boolean isArray() {
         return repeated;
     }
 
-    public boolean isValidFor(int typeTag) {
+    public final boolean isValidFor(int typeTag) {
         return (typeTag == type.getWireType());
     }
 
