@@ -98,9 +98,8 @@ public class TypeResolver
         List<Field> rawFields = rawType.getFields();
         ProtobufField[] resolvedFields = new ProtobufField[rawFields.size()];
         
+        ProtobufMessage message = new ProtobufMessage(rawType.getName(), resolvedFields);
         // Important: add type itself as (being) resolved, to allow for self-refs:
-        Map<String,ProtobufField> fields = new LinkedHashMap<String,ProtobufField>();
-        ProtobufMessage message = new ProtobufMessage(rawType.getName(), fields, resolvedFields);
         if (_resolvedMessageTypes.isEmpty()) {
             _resolvedMessageTypes = new HashMap<String,ProtobufMessage>();
         }
@@ -144,7 +143,6 @@ public class TypeResolver
                 }
             }
             resolvedFields[ix++] = pbf;
-            fields.put(f.getName(), pbf);
         }
         ProtobufField first = (resolvedFields.length == 0) ? null : resolvedFields[0];
         
@@ -152,9 +150,8 @@ public class TypeResolver
         Arrays.sort(resolvedFields);
 
         // And then link the fields, to speed up iteration
-        List<ProtobufField> f = new ArrayList<ProtobufField>(fields.values());
-        for (int i = 0, end = f.size()-1; i < end; ++i) {
-            f.get(i).assignNext(f.get(i+1));
+        for (int i = 0, end = resolvedFields.length-1; i < end; ++i) {
+            resolvedFields[i].assignNext(resolvedFields[i+1]);
         }
         message.init(first);
         return message;

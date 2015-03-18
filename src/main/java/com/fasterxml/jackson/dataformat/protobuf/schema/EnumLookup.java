@@ -4,6 +4,11 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.SerializableString;
 
+/**
+ * Helper class used for doing efficient lookups of protoc enums
+ * given enum name caller provides. Ideally this would be avoided,
+ * but at this point translation is unfortunately necessary.
+ */
 public abstract class EnumLookup
 {
     public static EnumLookup empty() {

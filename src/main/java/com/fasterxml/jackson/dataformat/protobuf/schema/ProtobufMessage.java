@@ -14,15 +14,11 @@ public class ProtobufMessage
 
     protected final String _name;
 
-    /**
-     *<p>
-     * NOTE: although final, entries are added straight into Map, after
-     * constructor has finished. Same is true for <code>_fields</code>
-     */
-    protected final Map<String,ProtobufField> _fieldsByName;
-
     protected final ProtobufField[] _fields;
 
+    // note: assigned on init()
+    protected FieldLookup _fieldsByName;
+    
     /**
      * Arrays of fields indexed by id (offset by <code>_idOffset</code>), if
      * fields ids are in contiguous (enough) range.
@@ -33,11 +29,9 @@ public class ProtobufMessage
 
     protected int _idOffset = -1;
     
-    public ProtobufMessage(String name, Map<String,ProtobufField> fieldsByName,
-            ProtobufField[] fields)
+    public ProtobufMessage(String name, ProtobufField[] fields)
     {
         _name = name;
-        _fieldsByName = fieldsByName;
         _fields = fields;
     }
 
@@ -49,6 +43,7 @@ public class ProtobufMessage
     public void init(ProtobufField first)
     {
         _firstField = first;
+        _fieldsByName = FieldLookup.construct(_fields);
 
         // Let's see, as well, whether we can create a direct lookup index.
         // Note that fields have been sorted by caller already.
@@ -79,7 +74,7 @@ public class ProtobufMessage
     }
 
     public static ProtobufMessage bogusMessage(String desc) {
-        ProtobufMessage bogus = new ProtobufMessage(desc, Collections.<String,ProtobufField>emptyMap(), NO_FIELDS);
+        ProtobufMessage bogus = new ProtobufMessage(desc, NO_FIELDS);
         bogus.init(null);
         return bogus;
     }
@@ -92,7 +87,7 @@ public class ProtobufMessage
             return f;
         }
         // regardless, find the field
-        return _fieldsByName.get(name);
+        return _fieldsByName.findField(name);
     }
     
     public int getFieldCount() { return _fields.length; }
@@ -100,7 +95,7 @@ public class ProtobufMessage
     public String getName() { return _name; }
 
     public ProtobufField field(String name) {
-        return _fieldsByName.get(name);
+        return _fieldsByName.findField(name);
     }
 
     // !!! TODO: optimize?
@@ -122,16 +117,15 @@ public class ProtobufMessage
         return null;
     }
 
-    // !!! TODO: optimize?
     public ProtobufField field(SerializableString name) {
-        return _fieldsByName.get(name.getValue());
+        return _fieldsByName.findField(name.getValue());
     }
 
     public String fieldsAsString() {
-        return _fieldsByName.keySet().toString();
+        return Arrays.asList(_fields).toString();
     }
 
     public Iterable<ProtobufField> fields() {
-        return _fieldsByName.values();
+        return Arrays.asList(_fields);
     }
 }
