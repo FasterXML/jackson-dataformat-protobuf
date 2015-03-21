@@ -413,7 +413,7 @@ public abstract class EnumLookup
             int i = hashSize + (hashSize>>1);
             for (int end = i + _spillCount; i < end; ++i) {
                 if (key.equals(_keys[i])) {
-                    return _indices[1];
+                    return _indices[i];
                 }
             }
             return -1;
