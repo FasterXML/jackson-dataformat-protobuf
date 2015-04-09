@@ -60,10 +60,19 @@ public class ProtobufSchema implements FormatSchema
     /**********************************************************
      */
 
+    /**
+     * Accessor for native representation of the protoc.
+     * Mostly useful for debugging; application code should not need to
+     * access this representation during normal operation.
+     */
     public NativeProtobufSchema getSource() {
         return _source;
     }
 
+    /**
+     * Accessor for getting the default {@link ProtobufMessage} type that
+     * is usually the root type for this schema.
+     */
     public ProtobufMessage getRootType() {
         return _rootType;
     }
@@ -76,6 +85,10 @@ public class ProtobufSchema implements FormatSchema
         return _source.getMessageNames();
     }
 
+    /**
+     * Accessor to get type id for this {@link FormatSchema}, used by code Jackson
+     * databinding functionality. Not usually needed by application developers.
+     */
     @Override
     public String getSchemaType() {
         return FORMAT_NAME_PROTOBUF;
