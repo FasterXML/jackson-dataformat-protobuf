@@ -4,6 +4,7 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.SerializableString;
 import com.squareup.protoparser.MessageType.Field;
+import com.squareup.protoparser.Option;
 
 public class ProtobufField
 // sorted in increasing order
@@ -108,12 +109,30 @@ public class ProtobufField
                 required = repeated = false;
                 break;
             }
-            packed = nativeField.isPacked();
-            deprecated = nativeField.isDeprecated();
+            /* 08-Apr-2015, tatu: Due to [https://github.com/square/protoparser/issues/90]
+             *   we can't use 'isPacked()' in 3.1.5 (and probably deprecated has same issue);
+             *   let's add a temporary workaround.
+             */
+            packed = _findBooleanOption(nativeField, "packed");
+            deprecated = _findBooleanOption(nativeField, "deprecated");
         }
         isObject = (type == FieldType.MESSAGE);
     }
 
+    private static boolean _findBooleanOption(Field f, String key)
+    {
+        for (Option opt : f.getOptions()) {
+            if (key.equals(opt.getName())) {
+                Object val = opt.getValue();
+                if (val instanceof Boolean) {
+                    return ((Boolean) val).booleanValue();
+                }
+                return "true".equals(String.valueOf(val).trim());
+            }
+        }
+        return false;
+    }
+    
     public void assignMessageType(ProtobufMessage msgType) {
         if (type != FieldType.MESSAGE) {
             throw new IllegalStateException("Can not assign message type for non-message field '"+name+"'");

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
-public class TestSchemaHandling extends ProtobufTestBase
+public class SchemaParsingTest extends ProtobufTestBase
 {
     final protected static String PROTOC_ENUMS =
             "message Enums {\n"
@@ -26,6 +26,12 @@ public class TestSchemaHandling extends ProtobufTestBase
     ;
 
     final protected static String PROTOC_EMPTY = "message Empty { }";
+
+    final protected static String PROTOC_STRINGS_PACKED =
+            "message Strings {\n"
+            +" repeated string values = 2 [packed=true];\n"
+            +"}\n"
+    ;
     
     public void testSimpleSearchRequest() throws Exception
     {
@@ -92,6 +98,7 @@ public class TestSchemaHandling extends ProtobufTestBase
         f = msg.field("enum1");
         assertNotNull(f);
         assertTrue(f.isStdEnum);
+        assertFalse(f.packed);
         
         f = msg.field("enum2");
         assertNotNull(f);
@@ -104,6 +111,20 @@ public class TestSchemaHandling extends ProtobufTestBase
         assertNotNull(schema);
         List<String> all = schema.getMessageTypes();
         assertEquals(1, all.size());
+    }
+
+    public void testPacked() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_STRINGS_PACKED);
+        assertNotNull(schema);
+        List<String> all = schema.getMessageTypes();
+        assertEquals(1, all.size());
+        ProtobufMessage msg = schema.getRootType();
+        assertEquals(1, msg.getFieldCount());
+        ProtobufField field = msg.fields().iterator().next();
+        assertEquals("values", field.name);
+        assertEquals(2, field.id);
+        assertTrue(field.packed);
     }
 }
 
