@@ -5,7 +5,8 @@ import java.util.*;
 import com.squareup.protoparser.*;
 
 /**
- * Helper class used for wrapping a "raw" protobuf schema; and used
+ * Helper class used for wrapping a "raw" protobuf schema (as read by
+ * "protoparser" library); and used
  * as input for creating specific {@link ProtobufSchema} to use for
  * reading/writing protobuf encoded content
  */

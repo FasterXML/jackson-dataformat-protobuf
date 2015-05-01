@@ -15,7 +15,9 @@ public class ProtobufSchema implements FormatSchema
 
     /**
      * In case we want to use a different root type, we'll also hold
-     * a reference to the native definition.
+     * a reference to the native definition, if one is available.
+     * Note that it may be possible to construct instances directly,
+     * in which case this would be `null`.
      */
     protected final NativeProtobufSchema _source;
     
