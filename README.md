@@ -13,11 +13,12 @@ Project is licensed under [Apache License 2.0](http://www.apache.org/licenses/LI
 Protoc (protobuf IDL) parsing is done using [square/protoparser](https://github.com/square/protoparser) library.
 (note: another library, [Protostuff](http://code.google.com/p/protostuff/), also has usable parser)
 
+Project does NOT depend on the official [Google Java protobuf](https://github.com/google/protobuf) library, although
+it may be used for conformance testing purposes in future.
+
 # Status
 
 [![Build Status](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf.svg)](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf)
 
-(Jan-2014): Still in initial prototyping phase:
+(Apr-2014): Implementation complete, ready for 2.6.0-SNAPSHOT!
 
- * Basic integration of `protoparser` exists, looks like we can read protoc stuff as expected. * Starting to work on `ProtobufGenerator` first, seems slightly simpler
-    * one complex part: protobuf uses length-prefixing, which is a major PITA for embedded messages
