@@ -44,11 +44,16 @@ abstractions.
       <artifactId>jackson-core</artifactId>
       <version>${jackson.version.core}</version>
     </dependency>
-    <!--  Hmmh. Need databind for schema generation... -->
+    <!-- Hmmh. Need databind for schema generation, convenience ProtobufMapper.
+         However: dependency should be possible to include as 'provided', to
+         make it possible to exclude for use cases where ObjectMapper and databind
+         are not strictly needed.
+      -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson.version.core}</version>
+      <scope>provided</scope>
     </dependency>
 	<dependency>
 	  <groupId>com.squareup</groupId>
