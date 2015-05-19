@@ -41,7 +41,7 @@ public class ReadComplexPojoTest extends ProtobufTestBase
         assertNotNull(bytes);
         assertEquals(252, bytes.length);
 
-        ObjectReader r =  MAPPER.reader(MediaItem.class).with(schema);
+        ObjectReader r =  MAPPER.readerFor(MediaItem.class).with(schema);
         MediaItem result;
         InputStream in = new ByteArrayInputStream(bytes);
 

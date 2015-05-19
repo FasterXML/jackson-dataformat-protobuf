@@ -67,7 +67,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertEquals(6, bytes.length);
 
         // but more importantly, try to parse
-        Point result = MAPPER.reader(Point.class).with(schema).readValue(bytes);
+        Point result = MAPPER.readerFor(Point.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertEquals(input.x, result.x);
         assertEquals(input.y, result.y);
@@ -100,7 +100,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertEquals(12, bytes.length);
 
         // but more importantly, try to parse
-        Point result = MAPPER.reader(Point.class).with(schema).readValue(bytes);
+        Point result = MAPPER.readerFor(Point.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertEquals(input.x, result.x);
         assertEquals(input.y, result.y);
@@ -134,7 +134,7 @@ public class ReadSimpleTest extends ProtobufTestBase
 
         assertEquals(15, bytes.length);
 
-        Name result = MAPPER.reader(Name.class).with(schema).readValue(bytes);
+        Name result = MAPPER.readerFor(Name.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertEquals(input.first, result.first);
         assertEquals(input.last, result.last);
@@ -154,7 +154,7 @@ public class ReadSimpleTest extends ProtobufTestBase
 
         assertEquals(15, bytes.length);
 
-        Box result = MAPPER.reader(Box.class).with(schema).readValue(bytes);
+        Box result = MAPPER.readerFor(Box.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertNotNull(result.topLeft);
         assertNotNull(result.bottomRight);
@@ -172,7 +172,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertNotNull(bytes);
         assertEquals(20, bytes.length);
         
-        Strings result = MAPPER.reader(Strings.class).with(schema).readValue(bytes);
+        Strings result = MAPPER.readerFor(Strings.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertNotNull(result.values);
         assertEquals(input.values.length, result.values.length);
@@ -211,7 +211,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         // one byte less, due to length prefix
         assertEquals(19, bytes.length);
 
-        Strings result = MAPPER.reader(Strings.class).with(schema).readValue(bytes);
+        Strings result = MAPPER.readerFor(Strings.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertNotNull(result.values);
         assertEquals(input.values.length, result.values.length);
@@ -230,7 +230,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertNotNull(bytes);
         assertEquals(19, bytes.length);
         
-        NamedStrings result = MAPPER.reader(NamedStrings.class).with(schema).readValue(bytes);
+        NamedStrings result = MAPPER.readerFor(NamedStrings.class).with(schema).readValue(bytes);
         assertNotNull(result);
         assertEquals(input.name, result.name);
         assertNotNull(result.values);
@@ -282,7 +282,7 @@ public class ReadSimpleTest extends ProtobufTestBase
         assertNotNull(bytes);
         assertEquals(16, bytes.length);
 
-        SearchRequest result = MAPPER.reader(SearchRequest.class).with(schema).readValue(bytes);
+        SearchRequest result = MAPPER.readerFor(SearchRequest.class).with(schema).readValue(bytes);
         assertNotNull(result);
 
         assertEquals(input.page_number, result.page_number);

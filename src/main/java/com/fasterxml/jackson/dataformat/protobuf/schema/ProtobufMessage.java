@@ -14,6 +14,12 @@ public class ProtobufMessage
 
     protected final String _name;
 
+    /**
+     * Array that contains actual fields, in declaration order.
+     * Note that while array is assigned in constructor, the contents
+     * may be lazily added within, but they must be completed
+     * before {@link #init(ProtobufField)} is called.
+     */
     protected final ProtobufField[] _fields;
 
     // note: assigned on init()

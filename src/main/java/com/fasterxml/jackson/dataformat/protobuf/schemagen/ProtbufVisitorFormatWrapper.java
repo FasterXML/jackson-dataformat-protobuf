@@ -3,7 +3,7 @@ package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.*;
 
-public abstract class VisitorFormatWrapperImpl
+public abstract class ProtbufVisitorFormatWrapper
     implements JsonFormatVisitorWrapper
 {
     protected SerializerProvider _provider;
@@ -27,7 +27,7 @@ public abstract class VisitorFormatWrapperImpl
     /**********************************************************************
      */
 
-    public VisitorFormatWrapperImpl(SerializerProvider p) {
+    public ProtbufVisitorFormatWrapper(SerializerProvider p) {
         _provider = p;
     }
     
