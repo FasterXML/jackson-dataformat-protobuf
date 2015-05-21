@@ -3,10 +3,7 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 import java.util.*;
 
 import com.fasterxml.jackson.core.util.InternCache;
-import com.squareup.protoparser.EnumType;
-import com.squareup.protoparser.MessageType;
-import com.squareup.protoparser.Type;
-import com.squareup.protoparser.MessageType.Field;
+import com.squareup.protoparser.*;
 
 /**
  * Stateful class needed to properly resolve type definitions of
@@ -17,13 +14,13 @@ public class TypeResolver
 {
     private final TypeResolver _parent;
 
-    private Map<String,MessageType> _nativeMessageTypes;
+    private Map<String,MessageElement> _nativeMessageTypes;
 
     private Map<String,ProtobufEnum> _enumTypes;
 
     private Map<String,ProtobufMessage> _resolvedMessageTypes;
     
-    protected TypeResolver(TypeResolver p, Map<String,MessageType> nativeMsgs,
+    protected TypeResolver(TypeResolver p, Map<String,MessageElement> nativeMsgs,
             Map<String,ProtobufEnum> enums)
     {
         _parent = p;
@@ -38,54 +35,54 @@ public class TypeResolver
         _resolvedMessageTypes = Collections.emptyMap();
     }
 
-    public static TypeResolver construct(List<Type> nativeTypes) {
+    public static TypeResolver construct(List<TypeElement> nativeTypes) {
         return construct(null, nativeTypes);
     }
     
-    protected static TypeResolver construct(TypeResolver parent, List<Type> nativeTypes)
+    protected static TypeResolver construct(TypeResolver parent, List<TypeElement> nativeTypes)
     {
-        Map<String,MessageType> nativeMessages = null;
+        Map<String,MessageElement> nativeMessages = null;
         Map<String,ProtobufEnum> enumTypes = null;
         
-        for (Type nt : nativeTypes) {
-            if (nt instanceof MessageType) {
+        for (TypeElement nt : nativeTypes) {
+            if (nt instanceof MessageElement) {
                 if (nativeMessages == null) {
-                    nativeMessages = new LinkedHashMap<String,MessageType>();
+                    nativeMessages = new LinkedHashMap<String,MessageElement>();
                 }
-                nativeMessages.put(nt.getName(), (MessageType) nt);
-            } else if (nt instanceof EnumType) {
+                nativeMessages.put(nt.name(), (MessageElement) nt);
+            } else if (nt instanceof EnumElement) {
                 if (enumTypes == null) {
                     enumTypes = new LinkedHashMap<String,ProtobufEnum>();
                 }
-                enumTypes.put(nt.getName(), _constructEnum((EnumType) nt));
+                enumTypes.put(nt.name(), _constructEnum((EnumElement) nt));
             } // no other known types?
         }
         return new TypeResolver(parent, nativeMessages, enumTypes);
     }
 
-    protected static ProtobufEnum _constructEnum(EnumType nativeEnum)
+    protected static ProtobufEnum _constructEnum(EnumElement nativeEnum)
     {
         final Map<String,Integer> valuesByName = new LinkedHashMap<String,Integer>();
         boolean standard = true;
         int exp = 0;
 
-        for (EnumType.Value v : nativeEnum.getValues()) {
-            int id = v.getTag();
+        for (EnumConstantElement v : nativeEnum.constants()) {
+            int id = v.tag();
             if (standard && (id != exp)) {
                 standard = false;
             }
-            valuesByName.put(v.getName(), id);
+            valuesByName.put(v.name(), id);
             ++exp;
         }
         // 17-Mar-2015, tatu: Number of intern()s here should be nominal;
         //    but intern()ing itself helps in keeping name/id enum translation fast
-        String name = InternCache.instance.intern(nativeEnum.getName());
+        String name = InternCache.instance.intern(nativeEnum.name());
         return new ProtobufEnum(name, valuesByName, standard);
     }
 
-    public ProtobufMessage resolve(MessageType rawType)
+    public ProtobufMessage resolve(MessageElement rawType)
     {
-        ProtobufMessage msg = _findResolvedMessage(rawType.getName());
+        ProtobufMessage msg = _findResolvedMessage(rawType.name());
         if (msg != null) {
             return msg;
         }
@@ -93,43 +90,45 @@ public class TypeResolver
          * important that we actually create a new context, that is,
          * new TypeResolver instance, and call resolution on that.
          */
-        return TypeResolver.construct(this, rawType.getNestedTypes())
+        return TypeResolver.construct(this, rawType.nestedElements())
                 ._resolve(rawType);
     }
         
-    protected ProtobufMessage _resolve(MessageType rawType)
+    protected ProtobufMessage _resolve(MessageElement rawType)
     {
-        List<Field> rawFields = rawType.getFields();
+        List<FieldElement> rawFields = rawType.fields();
         ProtobufField[] resolvedFields = new ProtobufField[rawFields.size()];
         
-        ProtobufMessage message = new ProtobufMessage(rawType.getName(), resolvedFields);
+        ProtobufMessage message = new ProtobufMessage(rawType.name(), resolvedFields);
         // Important: add type itself as (being) resolved, to allow for self-refs:
         if (_resolvedMessageTypes.isEmpty()) {
             _resolvedMessageTypes = new HashMap<String,ProtobufMessage>();
         }
-        _resolvedMessageTypes.put(rawType.getName(), message);
+        _resolvedMessageTypes.put(rawType.name(), message);
 
         // and then resolve fields
         int ix = 0;
-        for (Field f : rawFields) {
-            String typeStr = f.getType();
+        for (FieldElement f : rawFields) {
+            final DataType fieldType = f.type();
             // First: could it be we have a simple scalar type
-            FieldType type = FieldTypes.findType(typeStr);
+            FieldType type = FieldTypes.findType(fieldType);
             ProtobufField pbf;
             
             if (type != null) { // simple type
                 pbf = new ProtobufField(f, type);
-            } else {
+            } else if (fieldType instanceof DataType.NamedType) {
+                final String typeStr = ((DataType.NamedType) fieldType).name();
+                
                 // If not, a resolved local definition?
                 ProtobufField resolvedF = _findLocalResolved(f, typeStr);
                 if (resolvedF != null) {
                     pbf = resolvedF;
                 } else {
                     // or, barring that local but as of yet unresolved message?
-                    MessageType nativeMt = _nativeMessageTypes.get(typeStr);
+                    MessageElement nativeMt = _nativeMessageTypes.get(typeStr);
                     if (nativeMt != null) {
                         pbf = new ProtobufField(f,
-                                TypeResolver.construct(this, nativeMt.getNestedTypes())._resolve(nativeMt));
+                                TypeResolver.construct(this, nativeMt.nestedElements())._resolve(nativeMt));
                     } else {
                         // If not, perhaps parent might have an answer?
                         resolvedF = _parent._findAnyResolved(f, typeStr);
@@ -139,12 +138,16 @@ public class TypeResolver
                             // Ok, we are out of options here...
                             StringBuilder enumStr = _knownEnums(new StringBuilder());
                             StringBuilder msgStr = _knownMsgs(new StringBuilder());
-                            throw new IllegalArgumentException("Unknown protobuf field type '"+typeStr
-                                    +"' for field '"+f.getName()+"' of MessageType '"+rawType.getName()
-                                    +"' (known enum types: "+enumStr+"; known message types: "+msgStr+")");
+                            throw new IllegalArgumentException(String.format(
+                                    "Unknown protobuf field type '%s' for field '%s' of MessageType '%s"
+                                    +"' (known enum types: %s; known message types: %s)",
+                                    typeStr, f.name(), rawType.name(), enumStr, msgStr));
                         }
                     }
                 }
+            } else {
+                throw new IllegalArgumentException(String.format(
+                        "Unrecognized DataType '%s' for field '%s'", fieldType.getClass().getName(), f.name()));
             }
             resolvedFields[ix++] = pbf;
         }
@@ -170,14 +173,14 @@ public class TypeResolver
         return msg;
     }
 
-    private ProtobufField _findAnyResolved(Field nativeField, String typeStr)
+    private ProtobufField _findAnyResolved(FieldElement nativeField, String typeStr)
     {
         ProtobufField f = _findLocalResolved(nativeField, typeStr);
         if (f == null) {
-            MessageType nativeMt = _nativeMessageTypes.get(typeStr);
+            MessageElement nativeMt = _nativeMessageTypes.get(typeStr);
             if (nativeMt != null) {
                 return new ProtobufField(nativeField,
-                        TypeResolver.construct(this, nativeMt.getNestedTypes())._resolve(nativeMt));
+                        TypeResolver.construct(this, nativeMt.nestedElements())._resolve(nativeMt));
             }
             if (_parent != null) {
                 return _parent._findAnyResolved(nativeField, typeStr);
@@ -212,7 +215,7 @@ public class TypeResolver
         return sb;
     }
     
-    private ProtobufField _findLocalResolved(Field nativeField, String typeStr)
+    private ProtobufField _findLocalResolved(FieldElement nativeField, String typeStr)
     {
         ProtobufMessage msg = _resolvedMessageTypes.get(typeStr);
         if (msg != null) {

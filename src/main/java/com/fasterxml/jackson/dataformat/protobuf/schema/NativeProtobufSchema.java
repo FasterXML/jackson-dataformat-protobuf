@@ -13,14 +13,14 @@ import com.squareup.protoparser.*;
 public class NativeProtobufSchema
 {
     protected final String _name;
-    protected final List<Type> _nativeTypes;
+    protected final List<TypeElement> _nativeTypes;
 
     protected volatile String[] _messageNames;
     
     protected NativeProtobufSchema(ProtoFile input)
     {
-        _name = input.getFileName();
-        _nativeTypes = input.getTypes();
+        _name = input.filePath();
+        _nativeTypes = input.typeElements();
     }
 
     public static NativeProtobufSchema construct(ProtoFile input) {
@@ -33,9 +33,9 @@ public class NativeProtobufSchema
      */
     public boolean hasMessageType(String messageTypeName)
     {
-        for (Type type : _nativeTypes) {
-            if (messageTypeName.equals(type.getName())) {
-                if (type instanceof MessageType) {
+        for (TypeElement type : _nativeTypes) {
+            if (messageTypeName.equals(type.name())) {
+                if (type instanceof MessageElement) {
                     return true;
                 }
             }
@@ -49,7 +49,7 @@ public class NativeProtobufSchema
      */
     public ProtobufSchema forType(String messageTypeName)
     {
-        MessageType msg = _messageType(messageTypeName);
+        MessageElement msg = _messageType(messageTypeName);
         if (msg == null) {
             throw new IllegalArgumentException("Protobuf schema definition (name '"+_name
                     +"') has no message type with name '"+messageTypeName+"': known types: "
@@ -64,7 +64,7 @@ public class NativeProtobufSchema
      */
     public ProtobufSchema forFirstType()
     {
-        MessageType msg = _firstMessageType();
+        MessageElement msg = _firstMessageType();
         if (msg == null) {
             throw new IllegalArgumentException("Protobuf schema definition (name '"+_name
                     +"') contains no message type definitions");
@@ -85,20 +85,20 @@ public class NativeProtobufSchema
     /**********************************************************
      */
     
-    protected MessageType _firstMessageType() {
-        for (Type type : _nativeTypes) {
-            if (type instanceof MessageType) {
-                return (MessageType) type;
+    protected MessageElement _firstMessageType() {
+        for (TypeElement type : _nativeTypes) {
+            if (type instanceof MessageElement) {
+                return (MessageElement) type;
             }
         }
         return null;
     }
 
-    protected MessageType _messageType(String name) {
-        for (Type type : _nativeTypes) {
-            if ((type instanceof MessageType)
-                    && name.equals(type.getName())) {
-                return (MessageType) type;
+    protected MessageElement _messageType(String name) {
+        for (TypeElement type : _nativeTypes) {
+            if ((type instanceof MessageElement)
+                    && name.equals(type.name())) {
+                return (MessageElement) type;
             }
         }
         return null;
@@ -106,9 +106,9 @@ public class NativeProtobufSchema
 
     private String[] _getMessageNames() {
         ArrayList<String> names = new ArrayList<String>();
-        for (Type type : _nativeTypes) {
-            if (type instanceof MessageType) {
-                names.add(type.getName());
+        for (TypeElement type : _nativeTypes) {
+            if (type instanceof MessageElement) {
+                names.add(type.name());
             }
         }
         return names.toArray(new String[names.size()]);

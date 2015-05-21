@@ -5,7 +5,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 
 import com.squareup.protoparser.ProtoFile;
-import com.squareup.protoparser.ProtoSchemaParser;
+import com.squareup.protoparser.ProtoParser;
 
 /**
  * Class used for loading protobuf definitions (from .proto files
@@ -146,7 +146,7 @@ public class ProtobufSchemaLoader
      */
 
     public ProtoFile _loadNative(File f) throws IOException {
-        return ProtoSchemaParser.parse(f);
+        return ProtoParser.parseUtf8(f);
     }
 
     public ProtoFile _loadNative(URL url) throws IOException {
@@ -154,7 +154,7 @@ public class ProtobufSchemaLoader
     }
 
     public ProtoFile _loadNative(String schemaAsString) throws IOException {
-        return ProtoSchemaParser.parse(DEFAULT_SCHEMA_NAME, schemaAsString);
+        return ProtoParser.parse(DEFAULT_SCHEMA_NAME, schemaAsString);
     }
     
     public ProtoFile _loadNative(InputStream in, boolean close) throws IOException {
@@ -164,7 +164,7 @@ public class ProtobufSchemaLoader
     protected ProtoFile _loadNative(Reader r, boolean close) throws IOException
     {
         try {
-            return ProtoSchemaParser.parse(DEFAULT_SCHEMA_NAME, _readAll(r));
+            return ProtoParser.parse(DEFAULT_SCHEMA_NAME, _readAll(r));
         } finally {
             if (close) {
                 try { r.close(); } catch (IOException e) { }

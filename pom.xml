@@ -26,6 +26,10 @@ abstractions.
     <jackson.version.annotations>2.6.0-rc1</jackson.version.annotations>
     <jackson.version.core>2.6.0-rc1</jackson.version.core>
 
+    <!-- Protoparser 4.x requires 1.7, so: -->
+    <javac.src.version>1.7</javac.src.version>
+    <javac.target.version>1.7</javac.target.version>
+
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
     <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
     <!--
@@ -58,7 +62,7 @@ abstractions.
 	<dependency>
 	  <groupId>com.squareup</groupId>
 	  <artifactId>protoparser</artifactId>
-	  <version>3.1.5</version>
+	  <version>4.0.0-SNAPSHOT</version>
 	</dependency>
 
      <!-- and for testing, JUnit is needed; as well as annotations -->

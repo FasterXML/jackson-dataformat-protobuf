@@ -3,8 +3,8 @@ package com.fasterxml.jackson.dataformat.protobuf.schema;
 import java.util.*;
 
 import com.fasterxml.jackson.core.SerializableString;
-import com.squareup.protoparser.MessageType.Field;
-import com.squareup.protoparser.Option;
+import com.squareup.protoparser.FieldElement;
+import com.squareup.protoparser.OptionElement;
 
 public class ProtobufField
 // sorted in increasing order
@@ -57,15 +57,15 @@ public class ProtobufField
 
     public final boolean isStdEnum;
     
-    public ProtobufField(Field nativeField, FieldType type) {
+    public ProtobufField(FieldElement nativeField, FieldType type) {
         this(nativeField, type, null, null);
     }
 
-    public ProtobufField(Field nativeField, ProtobufMessage msg) {
+    public ProtobufField(FieldElement nativeField, ProtobufMessage msg) {
         this(nativeField, FieldType.MESSAGE, msg, null);
     }
 
-    public ProtobufField(Field nativeField, ProtobufEnum et) {
+    public ProtobufField(FieldElement nativeField, ProtobufEnum et) {
         this(nativeField, FieldType.ENUM, null, et);
     }
 
@@ -73,7 +73,7 @@ public class ProtobufField
         return new ProtobufField(null, FieldType.MESSAGE, null, null);
     }
     
-    protected ProtobufField(Field nativeField, FieldType type,
+    protected ProtobufField(FieldElement nativeField, FieldType type,
             ProtobufMessage msg, ProtobufEnum et)
     {
         this.type = type;
@@ -93,10 +93,10 @@ public class ProtobufField
             repeated = required = deprecated = packed = false;
             name = "UNKNOWN";
         } else {
-            id = nativeField.getTag();
+            id = nativeField.tag();
             typedTag = (id << 3) + wireType;
-            name = nativeField.getName();
-            switch (nativeField.getLabel()) {
+            name = nativeField.name();
+            switch (nativeField.label()) {
             case REPEATED:
                 required = false;
                 repeated = true;
@@ -119,11 +119,11 @@ public class ProtobufField
         isObject = (type == FieldType.MESSAGE);
     }
 
-    private static boolean _findBooleanOption(Field f, String key)
+    private static boolean _findBooleanOption(FieldElement f, String key)
     {
-        for (Option opt : f.getOptions()) {
-            if (key.equals(opt.getName())) {
-                Object val = opt.getValue();
+        for (OptionElement opt : f.options()) {
+            if (key.equals(opt.name())) {
+                Object val = opt.value();
                 if (val instanceof Boolean) {
                     return ((Boolean) val).booleanValue();
                 }
