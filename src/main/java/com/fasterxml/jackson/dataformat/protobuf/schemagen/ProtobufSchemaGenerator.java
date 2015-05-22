@@ -9,7 +9,7 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
  * {@link com.fasterxml.jackson.databind.ObjectMapper#acceptJsonFormatVisitor}
  * which will invoke necessary callbacks.
  */
-public abstract class ProtobufSchemaGenerator extends ProtbufVisitorFormatWrapper
+public abstract class ProtobufSchemaGenerator extends RootMessageVisitor
 {
     public ProtobufSchemaGenerator() {
         // NOTE: null is fine here, as provider links itself after construction
