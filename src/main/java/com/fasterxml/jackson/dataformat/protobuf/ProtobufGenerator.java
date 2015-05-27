@@ -101,7 +101,7 @@ public class ProtobufGenerator extends GeneratorBase
     final protected OutputStream _output;
 
     /**
-     * Object used In cases where we need to buffer content to calculate length-prefix.
+     * Object used in cases where we need to buffer content to calculate length-prefix.
      */
     protected ByteAccumulator _buffered;
 
@@ -178,6 +178,17 @@ public class ProtobufGenerator extends GeneratorBase
     @Override
     public Object getOutputTarget() {
         return _output;
+    }
+
+    /**
+     * Calculating actual amount of buffering is somewhat complicated, and can not
+     * necessarily give 100% accurate answer due to presence of VInt encoding for
+     * length indicators. So, for now, we'll respond "don't know": this may be
+     * improved if and as needed.
+     */
+    @Override
+    public int getOutputBuffered() {
+        return -1;
     }
 
     @Override

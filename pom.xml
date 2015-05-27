@@ -24,7 +24,7 @@ abstractions.
 
   <properties>
     <jackson.version.annotations>2.6.0-rc1</jackson.version.annotations>
-    <jackson.version.core>2.6.0-rc1</jackson.version.core>
+    <jackson.version.core>2.6.0-rc2-SNAPSHOT</jackson.version.core>
 
     <!-- Protoparser 4.x requires 1.7, so: -->
     <javac.src.version>1.7</javac.src.version>
