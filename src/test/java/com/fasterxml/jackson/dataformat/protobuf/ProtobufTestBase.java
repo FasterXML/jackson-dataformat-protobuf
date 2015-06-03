@@ -22,7 +22,7 @@ abstract class ProtobufTestBase extends TestCase
         UNIVERSAL,
         WEB;
     }
-    
+
     static class SearchRequest {
         public String query;
         public int page_number, result_per_page;

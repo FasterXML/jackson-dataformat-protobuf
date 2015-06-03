@@ -796,7 +796,7 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
-        _verifyValueWrite("write Binary value");
+        _verifyValueWrite();
 
         // Unlike with some other formats, let's NOT Base64 encoded even if nominally
         // expecting String, and rather assume that if so, caller just provides as
@@ -1231,8 +1231,9 @@ public class ProtobufGenerator extends GeneratorBase
     
     private final void _writeInt32(int v) throws IOException
     {
+        _ensureRoom(9); // max tag 5 bytes
+        int ptr = _writeTag(_currPtr);
         final byte[] buf = _currBuffer;
-        int ptr = _currPtr;
         buf[ptr++] = (byte) v;
         v >>= 8;
         buf[ptr++] = (byte) v;
@@ -1245,10 +1246,12 @@ public class ProtobufGenerator extends GeneratorBase
     
     private final void _writeInt64(long v64) throws IOException
     {
+        _ensureRoom(13); // max tag 5 bytes
+        int ptr = _writeTag(_currPtr);
         final byte[] buf = _currBuffer;
-        int ptr = _currPtr;
 
         int v = (int) v64;
+        
         buf[ptr++] = (byte) v;
         v >>= 8;
         buf[ptr++] = (byte) v;
@@ -1258,6 +1261,7 @@ public class ProtobufGenerator extends GeneratorBase
         buf[ptr++] = (byte) v;
 
         v = (int) (v64 >> 32);
+        
         buf[ptr++] = (byte) v;
         v >>= 8;
         buf[ptr++] = (byte) v;
@@ -1303,11 +1307,11 @@ public class ProtobufGenerator extends GeneratorBase
         // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
         _ensureRoom(20);
         // and leave the gap of 10 bytes
-        int start = _currStart;
         int ptr = _currPtr;
 
         // root level content to flush first?
         if (_buffered == null) {
+            int start = _currStart;
             int len = ptr - start;
             if (len > 0) {
                 ptr = 0;
@@ -1327,6 +1331,19 @@ public class ProtobufGenerator extends GeneratorBase
         // since no tag written, could skimp on space needed
         _ensureRoom(16);
         int ptr = _currPtr;
+
+        /* 02-Jun-2015, tatu: It would seem like we should check for flushing here,
+         *  similar to method above. But somehow that does not seem to be needed...
+         *  Let's add it just to be safe, still.
+         */
+        if (_buffered == null) {
+            int len = ptr - _currStart;
+            if (len > 0) {
+                ptr = 0;
+                _output.write(_currBuffer, _currStart, len);
+            }
+        }
+        
         _currStart = _currPtr = ptr + 5;
         _buffered = new ByteAccumulator(_buffered, _currBuffer, ptr);
     }

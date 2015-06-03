@@ -2302,10 +2302,12 @@ public class ProtobufParser extends ParserMinimalBase
 
     protected final static long _long(int i1, int i2)
     {
-        long l1 = i1;
-        long l2 = i2;
-        l2 = (l2 << 32) >>> 32;
-        return (l1 << 32) + l2;
+        // important: LSB all the way, hence:
+        long high = i2;
+        high <<= 32;
+        long low = i1;
+        low = (low << 32) >>> 32;
+        return high | low;
     }
 
     /*

@@ -1,7 +1,10 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.*;
@@ -19,6 +22,40 @@ public class WriteSimpleTest extends ProtobufTestBase
         }
     }
 
+    final protected static String PROTOC_ID_POINTS =
+            "message OptionalPoint {\n"
+            +" required int32 id = 1;\n"
+            +" repeated Point points = 2;\n"
+            +"}\n"
+            +PROTOC_POINT;
+    ;
+
+    @JsonPropertyOrder({ "id", "point" })
+    static class IdPoints {
+        public int id;
+        public List<Point> points;
+
+        protected IdPoints() { }
+        
+        public IdPoints(int id, int x, int y) {
+            this.id = id;
+            points = Arrays.asList(new Point(x, y));
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[id=%d, points=%d]", id, points);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;
+            if (o.getClass() != getClass()) return false;
+            IdPoints other = (IdPoints) o;
+            return (other.id == id) && points.equals(other.points);
+        }
+    }
+    
     private final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
 
     /*
@@ -50,14 +87,16 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(input, result);
     }
 
-    public void testWritePointLong() throws Exception
+    public void testWritePointLongFixed() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_FL);
         final ObjectWriter w = MAPPER.writerFor(PointL.class)
                 .with(schema);
-        PointL input = new PointL(1500, -999);
+        PointL input = new PointL(1, -1);
         byte[] bytes = w.writeValueAsBytes(input);
+
         assertNotNull(bytes);
+        assertEquals(18, bytes.length);
 
         // read back using Mapper as well
         PointL result = MAPPER.readerFor(PointL.class)
@@ -71,7 +110,7 @@ public class WriteSimpleTest extends ProtobufTestBase
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_D);
         final ObjectWriter w = MAPPER.writerFor(PointD.class)
                 .with(schema);
-        PointD input = new PointD(-100.90, 0.033);
+        PointD input = new PointD(-100.75, 0.375);
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
 
@@ -159,12 +198,34 @@ public class WriteSimpleTest extends ProtobufTestBase
     public void testBooleanAndNull() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_OPTIONAL_VALUE);
-        final ObjectWriter w = MAPPER.writerFor(OptionalValue.class)
+        ObjectWriter w = MAPPER.writerFor(OptionalValue.class)
                 .with(schema);
         OptionalValue input = new OptionalValue(false, null);
         byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
         OptionalValue result = MAPPER.readerFor(OptionalValue.class)
+                .with(schema)
+                .readValue(bytes);
+        assertEquals(input, result);
+
+        // and another one with true
+        input = new OptionalValue(true, "abc");
+        bytes = w.writeValueAsBytes(input);
+        result = MAPPER.readerFor(OptionalValue.class)
+                .with(schema)
+                .readValue(bytes);
+        assertEquals(input, result);
+    }
+
+    public void testIdPoint() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_ID_POINTS);
+        ObjectWriter w = MAPPER.writerFor(IdPoints.class)
+                .with(schema);
+        IdPoints input = new IdPoints(1, 100, -200);
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+        IdPoints result = MAPPER.readerFor(IdPoints.class)
                 .with(schema)
                 .readValue(bytes);
         assertEquals(input, result);

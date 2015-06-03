@@ -97,7 +97,10 @@ public class WriteStringsTest extends ProtobufTestBase
         g.writeStartObject();
         g.writeStringField("first", null);
         g.writeFieldName("last");
-        g.writeString(longName);
+        int nameLen = longName.length();
+        char[] ch = new char[nameLen + 10];
+        longName.getChars(0, nameLen, ch, 5);
+        g.writeString(ch, 5, nameLen);
         g.writeEndObject();
         g.close();
 
@@ -110,7 +113,7 @@ public class WriteStringsTest extends ProtobufTestBase
         // Note: nulls are never explicitly written, but simple lead to omission of the field...
         assertEquals("last", p.getText());
         assertToken(JsonToken.VALUE_STRING, p.nextToken());
-        char[] ch = p.getTextCharacters();
+        ch = p.getTextCharacters();
         String str = new String(ch, p.getTextOffset(), p.getTextLength());
         assertEquals(longName, str);
         assertToken(JsonToken.END_OBJECT, p.nextToken());
