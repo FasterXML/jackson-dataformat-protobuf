@@ -1,8 +1,10 @@
 package com.fasterxml.jackson.dataformat.protobuf;
 
+import java.io.*;
+
+import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 
@@ -15,12 +17,20 @@ public class WriteStringsTest extends ProtobufTestBase
     /**********************************************************
      */
 
-    final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
+    private final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
+
+    private final ProtobufSchema NAME_SCHEMA;
+    { 
+        try {
+            NAME_SCHEMA = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public void testSimpleShort() throws Exception
     {
-        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
-        final ObjectWriter w = MAPPER.writer(schema);
+        final ObjectWriter w = MAPPER.writer(NAME_SCHEMA);
         byte[] bytes = w.writeValueAsBytes(new Name("Bob", "Burger"));
         assertEquals(13, bytes.length);
 
@@ -68,20 +78,53 @@ public class WriteStringsTest extends ProtobufTestBase
     
     private void _testSimpleLong(int clen, String part) throws Exception
     {
-        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
-        final ObjectWriter w = MAPPER.writer(schema);
-    
         StringBuilder sb = new StringBuilder();
         do {
             sb.append(part);
         } while (sb.length() < clen);
-        final String LONG_NAME = sb.toString();
+        final String longName = sb.toString();
+        _testSimpleLongMapper(longName);
+        _testSimpleLongManual(longName);
+    }
 
-        final byte[] LONG_BYTES = LONG_NAME.getBytes("UTF-8");
+    private void _testSimpleLongManual(String longName) throws Exception
+    {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        JsonGenerator g = MAPPER.getFactory().createGenerator(bytes);
+        g.enable(JsonGenerator.Feature.IGNORE_UNKNOWN);
+        g.setSchema(NAME_SCHEMA);
+
+        g.writeStartObject();
+        g.writeStringField("first", null);
+        g.writeFieldName("last");
+        g.writeString(longName);
+        g.writeEndObject();
+        g.close();
+
+        JsonParser p = MAPPER.getFactory().createParser(new ByteArrayInputStream(bytes.toByteArray()));
+        p.setSchema(NAME_SCHEMA);
+        
+        assertToken(JsonToken.START_OBJECT, p.nextToken());
+        assertToken(JsonToken.FIELD_NAME, p.nextToken());
+
+        // Note: nulls are never explicitly written, but simple lead to omission of the field...
+        assertEquals("last", p.getText());
+        assertToken(JsonToken.VALUE_STRING, p.nextToken());
+        char[] ch = p.getTextCharacters();
+        String str = new String(ch, p.getTextOffset(), p.getTextLength());
+        assertEquals(longName, str);
+        assertToken(JsonToken.END_OBJECT, p.nextToken());
+        p.close();
+    }
+    
+    private void _testSimpleLongMapper(String longName) throws Exception
+    {
+        final ObjectWriter w = MAPPER.writer(NAME_SCHEMA);
+        final byte[] LONG_BYTES = longName.getBytes("UTF-8");
         
         final int longLen = LONG_BYTES.length;
         
-        byte[] bytes = w.writeValueAsBytes(new Name("Bill", LONG_NAME));
+        byte[] bytes = w.writeValueAsBytes(new Name("Bill", longName));
         // 4 or 5 bytes for fields (tag, length), 4 for first name, N for second
         int expLen = 8 + longLen;
         if (longLen > 127) {

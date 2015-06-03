@@ -360,7 +360,7 @@ public class ProtobufGenerator extends GeneratorBase
         }
 
         // NOTE: do NOT clear _currField; needed for actual element type
-        
+
         _pbContext = _pbContext.createChildArrayContext();
         _writeTag = !_currField.packed;
         /* Unpacked vs package: if unpacked, nothing special is needed, since it
@@ -471,7 +471,6 @@ public class ProtobufGenerator extends GeneratorBase
             writeNull();
             return;
         }
-
         if (_currField.wireType != WireType.LENGTH_PREFIXED) {
             _writeEnum(text);
             return;
@@ -820,20 +819,26 @@ public class ProtobufGenerator extends GeneratorBase
     public void writeBoolean(boolean state) throws IOException
     {
         _verifyValueWrite();
-        
+
         // same as 'writeNumber(int)', really
         final int type = _currField.wireType;
 
         if (type == WireType.VINT) { // first, common case
-            _writeVInt(_currField.usesZigZag ? 2 : 1);
+            int b;
+            if (_currField.usesZigZag) {
+                b = state ? 2 : 0;
+            } else {
+                b = state ? 1 : 0;
+            }
+            _writeVInt(b);
             return;
         }
         if (type == WireType.FIXED_32BIT) {
-            _writeInt32(1);
+            _writeInt32(state ? 1 : 0);
             return;
         }
         if (type == WireType.FIXED_64BIT) {
-            _writeInt64(1L);
+            _writeInt64(state ? 1L : 0L);
             return;
         }
         _reportWrongWireType("boolean");
@@ -1298,7 +1303,17 @@ public class ProtobufGenerator extends GeneratorBase
         // need to ensure room for tag id, length (10 bytes); might as well ask for bit more
         _ensureRoom(20);
         // and leave the gap of 10 bytes
+        int start = _currStart;
         int ptr = _currPtr;
+
+        // root level content to flush first?
+        if (_buffered == null) {
+            int len = ptr - start;
+            if (len > 0) {
+                ptr = 0;
+                _output.write(_currBuffer, start, len);
+            }
+        }
         _currStart = _currPtr = ptr + 10;
         _buffered = new ByteAccumulator(_buffered, typedTag, _currBuffer, ptr);
     }
@@ -1320,7 +1335,7 @@ public class ProtobufGenerator extends GeneratorBase
     {
         final int start = _currStart;
         final int currLen = _currPtr - start;
-        
+
         ByteAccumulator acc = _buffered;
         acc = acc.finish(_output, _currBuffer, start, currLen);
         _buffered = acc;

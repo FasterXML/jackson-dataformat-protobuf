@@ -52,6 +52,18 @@ abstract class ProtobufTestBase extends TestCase
             +" required int64 x = 1;\n"
             +" required sint64 y = 2;\n"
             +"}\n";
+
+    final protected static String PROTOC_POINT_FL =
+            "message Point {\n"
+            +" required fixed64 x = 1;\n"
+            +" required fixed64 y = 2;\n"
+            +"}\n";
+
+    final protected static String PROTOC_POINT_D =
+            "message Point {\n"
+            +" required double x = 1;\n"
+            +" required float y = 2;\n"
+            +"}\n";
     
     final protected static String PROTOC_BOX =
             "message Box {\n"
@@ -71,8 +83,15 @@ abstract class ProtobufTestBase extends TestCase
 
     final protected static String PROTOC_NAME =
             "message Name {\n"
-            +" required string first = 2;\n"
+            +" optional string first = 2;\n"
             +" required string last = 7;\n"
+            +"}\n"
+    ;
+
+    final protected static String PROTOC_OPTIONAL_VALUE =
+            "message Value {\n"
+            +" required bool present = 1;\n"
+            +" optional string value = 3;\n"
             +"}\n"
     ;
     
@@ -148,6 +167,84 @@ abstract class ProtobufTestBase extends TestCase
         }
     }
 
+    static class PointL {
+        public long x;
+        public long y;
+
+        protected PointL() { }
+        
+        public PointL(long x, long y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "[x="+x+",y="+y+"]";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;
+            if (o.getClass() != getClass()) return false;
+            PointL other = (PointL) o;
+            return (other.x == x) && (other.y == y);
+        }
+    }
+
+    static class OptionalValue {
+        public boolean present;
+        public String value;
+
+        protected OptionalValue() { }
+        public OptionalValue(boolean p, String v) {
+            present = p;
+            value = v;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("[present=%s, value=%s]", present, value);
+        }
+        
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;
+            if (o.getClass() != getClass()) return false;
+            OptionalValue other = (OptionalValue) o;
+            if (other.present != present) {
+                return false;
+            }
+            if (value == other.value) return true;
+            return (value != null) && value.equals(other.value);
+        }
+    }
+
+    static class PointD {
+        public double x;
+        public double y;
+
+        protected PointD() { }
+        
+        public PointD(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "[x="+x+",y="+y+"]";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == this) return true;
+            if (o.getClass() != getClass()) return false;
+            PointD other = (PointD) o;
+            return (other.x == x) && (other.y == y);
+        }
+    }
+    
     static class Box {
         public Point topLeft, bottomRight;
 

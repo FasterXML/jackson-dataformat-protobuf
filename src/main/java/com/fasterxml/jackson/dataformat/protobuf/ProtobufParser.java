@@ -851,7 +851,8 @@ public class ProtobufParser extends ParserMinimalBase
             }
             {
                 int i = _inputBuffer[_inputPtr++];
-                // let's be strict here
+                // let's be strict here. But keep in mind that it's zigzag encoded so
+                // we shall value values of '1' and '2'
                 if (i == 1) {
                     type = JsonToken.VALUE_TRUE; 
                 } else if (i == 0) {

@@ -16,6 +16,8 @@ Protoc (protobuf IDL) parsing is done using [square/protoparser](https://github.
 Project does NOT depend on the official [Google Java protobuf](https://github.com/google/protobuf) library, although
 it may be used for conformance testing purposes in future.
 
+Protobuf module requires Java 7, due to `protoparser` requiring Java 7.
+
 # Status
 
 [![Build Status](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf.svg)](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf)

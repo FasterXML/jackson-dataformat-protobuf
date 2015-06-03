@@ -3,7 +3,7 @@ package com.fasterxml.jackson.dataformat.protobuf;
 import java.io.ByteArrayOutputStream;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
@@ -19,7 +19,7 @@ public class WriteSimpleTest extends ProtobufTestBase
         }
     }
 
-    final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
+    private final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
 
     /*
     /**********************************************************
@@ -27,12 +27,13 @@ public class WriteSimpleTest extends ProtobufTestBase
     /**********************************************************
      */
 
-    public void testWritePoint() throws Exception
+    public void testWritePointInt() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
         final ObjectWriter w = MAPPER.writerFor(Point.class)
                 .with(schema);
-        byte[] bytes = w.writeValueAsBytes(new Point(7, 2));
+        Point input = new Point(7, 2);
+        byte[] bytes = w.writeValueAsBytes(input);
         assertNotNull(bytes);
 
         // 4 bytes: 1 byte tags, 1 byte values
@@ -41,9 +42,73 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(7, bytes[1]); // VInt 7, no zig-zag
         assertEquals(0x10, bytes[2]); // wire type 0 (3 LSB), id of 2 (-> 0x10)
         assertEquals(4, bytes[3]); // VInt 2, but with zig-zag
+
+        // Plus read back using mapper as well
+        Point result = MAPPER.readerFor(Point.class)
+                .with(schema)
+                .readValue(bytes);
+        assertEquals(input, result);
     }
 
-    public void testWritePointWithLongs() throws Exception
+    public void testWritePointLong() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_FL);
+        final ObjectWriter w = MAPPER.writerFor(PointL.class)
+                .with(schema);
+        PointL input = new PointL(1500, -999);
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+
+        // read back using Mapper as well
+        PointL result = MAPPER.readerFor(PointL.class)
+                .with(schema)
+                .readValue(bytes);
+        assertEquals(input, result);
+    }
+
+    public void testWritePointDouble() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_D);
+        final ObjectWriter w = MAPPER.writerFor(PointD.class)
+                .with(schema);
+        PointD input = new PointD(-100.90, 0.033);
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+
+        // read back using Mapper as well
+        PointD result = MAPPER.readerFor(PointD.class)
+                .with(schema)
+                .readValue(bytes);
+        assertEquals(input, result);
+    }
+    
+    public void testWriteNameManual() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_NAME);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        JsonGenerator g = MAPPER.getFactory().createGenerator(bytes);
+        g.setSchema(schema);
+
+        g.writeStartObject();
+        g.writeFieldName("last");
+        char[] ch = "Ford".toCharArray();
+        g.writeString(ch, 0, ch.length);
+        // call flush() for fun, at root level, to verify that works
+        g.flush();
+        g.writeFieldName(new SerializedString("last"));
+        byte[] b = "Bob".getBytes("UTF-8");
+        g.writeRawUTF8String(b, 0, b.length);
+        g.writeEndObject();
+        g.close();
+        
+        b = bytes.toByteArray();
+        assertNotNull(bytes);
+
+        // 11 bytes: 2 tags, 2 length markers, Strings of 3 and 4 bytes
+        assertEquals(11, b.length);
+    }
+
+    public void testWritePointWithLongsManual() throws Exception
     {
         ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_POINT_L);
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -90,6 +155,20 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(0xFF, b[19] & 0xFF);
         assertEquals(0x01, b[20] & 0x01);
     }
+
+    public void testBooleanAndNull() throws Exception
+    {
+        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_OPTIONAL_VALUE);
+        final ObjectWriter w = MAPPER.writerFor(OptionalValue.class)
+                .with(schema);
+        OptionalValue input = new OptionalValue(false, null);
+        byte[] bytes = w.writeValueAsBytes(input);
+        assertNotNull(bytes);
+        OptionalValue result = MAPPER.readerFor(OptionalValue.class)
+                .with(schema)
+                .readValue(bytes);
+        assertEquals(input, result);
+    }
     
     public void testWriteCoord() throws Exception
     {
@@ -135,28 +214,5 @@ public class WriteSimpleTest extends ProtobufTestBase
         assertEquals(0x18, bytes[9]); // vint value, 0x18 remains as is
         assertEquals(0x10, bytes[10]); // wire type 0 (vint), tag id 2
         assertEquals(0x1E, bytes[11]); // zig-zagged vint value, 0xF becomes 0x1E
-    }
-
-    public void testUnknownProperties() throws Exception
-    {
-        ProtobufSchema schema = ProtobufSchemaLoader.std.parse(PROTOC_BOX, "Point");
-        final ObjectWriter w = MAPPER.writerFor(Point3D.class)
-                .with(schema);
-        
-        // First: if disabled, should get an error
-        try {
-            /*byte[] bytes =*/ w
-                .without(JsonGenerator.Feature.IGNORE_UNKNOWN)
-                .writeValueAsBytes(new Point3D(1, 2, 3));
-        } catch (JsonProcessingException e) {
-            verifyException(e, "Unrecognized field 'z'");
-        }
-
-        byte[] bytes = w
-                .with(JsonGenerator.Feature.IGNORE_UNKNOWN)
-                .writeValueAsBytes(new Point3D(1, 2, 3));
-        assertNotNull(bytes);
-        assertNotNull(bytes);
-        assertEquals(4, bytes.length);
     }
 }
