@@ -22,3 +22,16 @@ it may be used for conformance testing purposes in future.
 
 (Apr-2014): Implementation complete, ready for 2.6.0-SNAPSHOT!
 
+## Functionality
+
+### Supported versions
+
+Version 2 of `protoc` supported; parser supports v3 as well but encoder/decoder does not.
+
+### Missing features
+
+Following features are not yet fully implemented, but are planned to be evetually supported;
+
+* Enforcing of mandatory values
+* Value defaulting
+
