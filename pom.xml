@@ -62,7 +62,7 @@ abstractions.
 	<dependency>
 	  <groupId>com.squareup</groupId>
 	  <artifactId>protoparser</artifactId>
-	  <version>4.0.0-SNAPSHOT</version>
+	  <version>4.0.0</version>
 	</dependency>
 
      <!-- and for testing, JUnit is needed; as well as annotations -->
