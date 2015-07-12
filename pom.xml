@@ -4,7 +4,7 @@
   <parent>
     <groupId>com.fasterxml.jackson</groupId>
     <artifactId>jackson-parent</artifactId>
-    <version>2.5</version>
+    <version>2.6.1</version>
   </parent>
   <groupId>com.fasterxml.jackson.dataformat</groupId>
   <artifactId>jackson-dataformat-protobuf</artifactId>
@@ -23,8 +23,8 @@ abstractions.
   </scm>
 
   <properties>
-    <jackson.version.annotations>2.6.0-rc3</jackson.version.annotations>
-    <jackson.version.core>2.6.0-rc3</jackson.version.core>
+    <jackson.version.annotations>2.6.0-rc4</jackson.version.annotations>
+    <jackson.version.core>2.6.0-rc4</jackson.version.core>
 
     <!-- Protoparser 4.x requires 1.7, so: -->
     <javac.src.version>1.7</javac.src.version>
