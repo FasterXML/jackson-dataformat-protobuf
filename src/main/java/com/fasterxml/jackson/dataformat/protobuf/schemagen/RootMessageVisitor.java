@@ -2,15 +2,23 @@ package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.jsonFormatVisitors.*;
-import com.squareup.protoparser.MessageElement;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonAnyFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonArrayFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonBooleanFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonFormatVisitorWrapper;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonIntegerFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonMapFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonNullFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonNumberFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor;
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonStringFormatVisitor;
+import com.squareup.protoparser.TypeElement;
 
 public abstract class RootMessageVisitor
-    implements JsonFormatVisitorWrapper
+    extends JsonFormatVisitorWrapper.Base
 {
-    protected SerializerProvider _provider;
 
-    protected MessageElement.Builder _builder;
+    protected TypeElementBuilder _builder;
     
     /*
     /**********************************************************************
@@ -19,19 +27,7 @@ public abstract class RootMessageVisitor
      */
 
     public RootMessageVisitor(SerializerProvider p) {
-        _provider = p;
-        _builder = MessageElement.builder();
-    }
-    
-    @Override
-    public SerializerProvider getProvider() {
-        return _provider;
-    }
-
-    @Override
-    public void setProvider(SerializerProvider provider) {
-//        _schemas.setProvider(provider);
-        _provider = provider;
+        super(p);
     }
 
     /*
@@ -40,7 +36,7 @@ public abstract class RootMessageVisitor
     /**********************************************************************
      */
 
-    public MessageElement builtElement() {
+    public TypeElement builtElement() {
         return _builder.build();
     }
 
@@ -53,18 +49,9 @@ public abstract class RootMessageVisitor
     @Override
     public JsonObjectFormatVisitor expectObjectFormat(JavaType type)
     {
-        /*
-        Schema s = _schemas.findSchema(type);
-        if (s != null) {
-            _valueSchema = s;
-            return null;
-        }
-        RecordVisitor v = new RecordVisitor(_provider, type, _schemas);
-        _builder = v;
-        return v;
-        
-        */
-        return null;
+    	MessageElementVisitor visitor = new MessageElementVisitor(_provider, type);
+        _builder = visitor;
+        return visitor;
     }
 
     @Override

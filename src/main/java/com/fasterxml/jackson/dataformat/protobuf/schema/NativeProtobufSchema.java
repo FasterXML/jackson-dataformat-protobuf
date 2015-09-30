@@ -22,7 +22,7 @@ public class NativeProtobufSchema
         _name = input.filePath();
         _nativeTypes = input.typeElements();
     }
-
+    
     public static NativeProtobufSchema construct(ProtoFile input) {
         return new NativeProtobufSchema(input);
     }
@@ -77,6 +77,12 @@ public class NativeProtobufSchema
             _messageNames = _getMessageNames();
         }
         return Arrays.asList(_messageNames);
+    }
+    
+    public String toSchema() {
+    	ProtoFile.Builder builder = ProtoFile.builder(_name);
+    	builder.addTypes(_nativeTypes);
+    	return builder.build().toSchema();
     }
 
     /*
