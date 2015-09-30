@@ -1,12 +1,19 @@
 package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonFormatVisitable;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor;
 import com.squareup.protoparser.DataType;
 import com.squareup.protoparser.DataType.NamedType;
+import com.squareup.protoparser.DataType.ScalarType;
 import com.squareup.protoparser.FieldElement;
 import com.squareup.protoparser.FieldElement.Label;
 import com.squareup.protoparser.MessageElement;
@@ -15,11 +22,16 @@ import com.squareup.protoparser.TypeElement;
 public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implements TypeElementBuilder {
 
 	MessageElement.Builder _builder;
-	
+
 	int _tagCounter = 1;
+
+	Set<TypeElement> _nestedTypes = new HashSet<>();
+
+	JavaType _type;
 
 	public MessageElementVisitor(SerializerProvider provider, JavaType type) {
 		super(provider);
+		_type = type;
 		_builder = MessageElement.builder();
 		_builder.name(type.getRawClass().getSimpleName());
 		_builder.documentation("Message for " + type.toCanonical());
@@ -27,12 +39,14 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 
 	@Override
 	public TypeElement build() {
+		_builder.addTypes(_nestedTypes);
 		return _builder.build();
 	}
 
 	@Override
-	public void property(BeanProperty writer) {
-		// TODO Auto-generated method stub
+	public void property(BeanProperty writer) throws JsonMappingException {
+		FieldElement fElement = buildFieldElement(writer, Label.REQUIRED);
+		_builder.addField(fElement);
 	}
 
 	@Override
@@ -40,7 +54,12 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 	}
 
 	@Override
-	public void optionalProperty(BeanProperty writer) {
+	public void optionalProperty(BeanProperty writer) throws JsonMappingException {
+		FieldElement fElement = buildFieldElement(writer, Label.OPTIONAL);
+		_builder.addField(fElement);
+	}
+
+	protected FieldElement buildFieldElement(BeanProperty writer, Label label) throws JsonMappingException {
 		FieldElement.Builder fBuilder = FieldElement.builder();
 
 		fBuilder.name(writer.getName());
@@ -48,18 +67,17 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 
 		JavaType type = writer.getType();
 
-		fBuilder.type(getDataType(type));
-
-		if (type.isArrayType()) {
+		if (type.isArrayType() || type.isCollectionLikeType()) {
 			fBuilder.label(Label.REPEATED);
+			fBuilder.type(getDataType(type.getContentType()));
 		} else {
-			fBuilder.label(Label.OPTIONAL); // TODO: use annotation for labels
+			fBuilder.label(label);
+			fBuilder.type(getDataType(type));
 		}
-
-		_builder.addField(fBuilder.build());
+		return fBuilder.build();
 	}
-	
-	public int nextTag() {
+
+	protected int nextTag() {
 		return _tagCounter++;
 	}
 
@@ -67,18 +85,39 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 	public void optionalProperty(String name, JsonFormatVisitable handler, JavaType propertyTypeHint) {
 	}
 
-	private DataType getDataType(JavaType type) {
-		if (type.hasRawClass(int.class)) {
-			return DataType.ScalarType.INT32;
-		} else if (type.hasRawClass(String.class)) {
-			return DataType.ScalarType.STRING;
-		} else if (type.isArrayType()) {
-			return getDataType(type.getContentType());
+	protected DataType getDataType(JavaType type) throws JsonMappingException {
+
+		ScalarType sType = ProtobuffSchemaHelper.getScalarType(type);
+		if (sType != null)
+			return sType;
+
+		if (_type != type) { //No self ref
+			if (Arrays.asList(_type.getRawClass().getDeclaredClasses()).contains(type.getRawClass())) { //nested class
+				TypeElement nestedType = getTypeElement(type);
+				_nestedTypes.add(nestedType);
+			} else {
+				throw new UnsupportedOperationException(
+						"Non static nested classes, like \"" + type + "\" are not supported");
+			}
 		}
+
 		return NamedType.create(type.getRawClass().getSimpleName());
 		//
 		// new UnsupportedOperationException(
 		// "Protobuf datatype mapping for " + type.getTypeName() + " is not
 		// supported (yet)");
+	}
+
+	private TypeElement getTypeElement(JavaType type) throws JsonMappingException {
+		SerializerProvider provider = getProvider();
+		JsonSerializer<?> serializer = provider.findValueSerializer(type);
+
+		if (type.isEnumType()) {
+			throw new UnsupportedOperationException("enums are not supported (yet)");
+		}
+
+		RootMessageVisitor visitor = new RootMessageVisitor(provider);
+		serializer.acceptJsonFormatVisitor(visitor, type);
+		return visitor.builtElement();
 	}
 }

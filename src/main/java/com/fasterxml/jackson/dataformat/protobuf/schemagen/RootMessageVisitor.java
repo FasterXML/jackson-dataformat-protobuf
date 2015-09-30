@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonStringFormatVisitor;
 import com.squareup.protoparser.TypeElement;
 
-public abstract class RootMessageVisitor
+public class RootMessageVisitor
     extends JsonFormatVisitorWrapper.Base
 {
 
