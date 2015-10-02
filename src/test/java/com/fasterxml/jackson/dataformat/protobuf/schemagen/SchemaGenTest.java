@@ -1,21 +1,18 @@
-package com.fasterxml.jackson.dataformat.protobuf;
+package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
 import static org.junit.Assert.assertArrayEquals;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.protobuf.ProtobufMapper;
+import com.fasterxml.jackson.dataformat.protobuf.ProtobufTestBase;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
-import com.fasterxml.jackson.dataformat.protobuf.schemagen.ProtobufSchemaGenerator;
 
-import junit.framework.TestCase;
-
-public class SchemaGenTest extends TestCase {
+public class SchemaGenTest extends ProtobufTestBase {
 
 	public static class RootType {
 		public String name;
@@ -34,26 +31,7 @@ public class SchemaGenTest extends TestCase {
 		public Employee boss;
 	}
 
-	static class WithRequireField {
-		@JsonProperty(required = true)
-		public byte[] fixedField;
-
-		@JsonProperty(required = true)
-		public WrappedByteArray wrappedFixedField;
-
-		void setValue(byte[] bytes) {
-			this.fixedField = bytes;
-		}
-
-		static class WrappedByteArray {
-			@JsonValue
-			public ByteBuffer getBytes() {
-				return null;
-			}
-		}
-	}
-
-	public void testSimpleObjGenProtobufSchemaTest() throws Exception {
+	public void testSimplePojoGenProtobufSchema() throws Exception {
 		ObjectMapper mapper = new ProtobufMapper();
 		ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
 		mapper.acceptJsonFormatVisitor(RootType.class, gen);
@@ -82,7 +60,7 @@ public class SchemaGenTest extends TestCase {
 		assertEquals(rType.other, parsedRootType.other);
 	}
 
-	public void testComplexObjGenProtobufSchemaTest() throws Exception {
+	public void testSelfRefPojoGenProtobufSchema() throws Exception {
 		ObjectMapper mapper = new ProtobufMapper();
 		ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
 		mapper.acceptJsonFormatVisitor(Employee.class, gen);
@@ -111,32 +89,24 @@ public class SchemaGenTest extends TestCase {
 		assertEquals(empl.boss, newEmpl.boss);
 	}
 
-	public void testWithRequireFieldGenProtobufSchemaTest() throws Exception {
+	public void testComplexPojoGenProtobufSchema() throws Exception {
 		ObjectMapper mapper = new ProtobufMapper();
 		ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
-		mapper.acceptJsonFormatVisitor(WithRequireField.class, gen);
+		mapper.acceptJsonFormatVisitor(MediaItem.class, gen);
 		ProtobufSchema schemaWrapper = gen.getGeneratedSchema();
-
 		assertNotNull(schemaWrapper);
 
 		String protoFile = schemaWrapper.getSource().toSchema();
 		System.out.println(protoFile);
 
-		Employee empl = new Employee();
-		empl.name = "Bobbee";
-		empl.age = 39;
-		empl.emails = new String[] { "bob@aol.com", "bobby@gmail.com" };
-		empl.boss = null;
+		MediaItem mediaItem = MediaItem.buildItem();
 
-		byte[] byteMsg = mapper.writerFor(Employee.class).with(schemaWrapper).writeValueAsBytes(empl);
+		byte[] byteMsg = mapper.writerFor(MediaItem.class).with(schemaWrapper).writeValueAsBytes(mediaItem);
 		System.out.println(byteMsg);
 		ProtobufSchema schema = ProtobufSchemaLoader.std.parse(protoFile);
-		Employee newEmpl = mapper.readerFor(Employee.class).with(schema).readValue(byteMsg);
+		MediaItem deserMediaItem = mapper.readerFor(MediaItem.class).with(schema).readValue(byteMsg);
 
-		System.out.println(newEmpl);
-		assertEquals(empl.name, newEmpl.name);
-		assertEquals(empl.age, newEmpl.age);
-		assertArrayEquals(empl.emails, newEmpl.emails);
-		assertEquals(empl.boss, newEmpl.boss);
+		System.out.println(deserMediaItem);
+		assertEquals(mediaItem, deserMediaItem);
 	}
 }

@@ -97,7 +97,7 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 				_nestedTypes.add(nestedType);
 			} else {
 				throw new UnsupportedOperationException(
-						"Non static nested classes, like \"" + type + "\" are not supported");
+						"Non static nested classes, like \"" + type + "\" are unsupported");
 			}
 		}
 
@@ -108,9 +108,9 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 		// supported (yet)");
 	}
 
-	private TypeElement getTypeElement(JavaType type) throws JsonMappingException {
+	protected TypeElement getTypeElement(JavaType type) throws JsonMappingException {
 		SerializerProvider provider = getProvider();
-		JsonSerializer<?> serializer = provider.findValueSerializer(type);
+		JsonSerializer<Object> serializer = provider.findValueSerializer(type, null);
 
 		if (type.isEnumType()) {
 			throw new UnsupportedOperationException("enums are not supported (yet)");

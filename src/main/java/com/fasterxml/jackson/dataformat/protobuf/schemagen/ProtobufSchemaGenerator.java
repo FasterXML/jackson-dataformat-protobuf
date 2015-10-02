@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor
 import com.fasterxml.jackson.dataformat.protobuf.schema.NativeProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
 import com.squareup.protoparser.ProtoFile;
-import com.squareup.protoparser.TypeElement;
 import com.squareup.protoparser.ProtoFile.Syntax;
+import com.squareup.protoparser.TypeElement;
 
 /**
  * Class that can generate a {@link ProtobufSchema} for a given Java POJO, using
@@ -16,25 +16,26 @@ import com.squareup.protoparser.ProtoFile.Syntax;
  * which will invoke necessary callbacks.
  */
 public class ProtobufSchemaGenerator extends RootMessageVisitor {
-	ProtoFile.Builder _builder;
 	
+	protected ProtoFile.Builder _builder;
+
 	public ProtobufSchemaGenerator() {
 		// NOTE: null is fine here, as provider links itself after construction
 		super(null);
 	}
 
 	public ProtobufSchema getGeneratedSchema() {
-		if(_builder == null) {
-			throw new IllegalStateException("No visit methods called on "+getClass().getName()
-                    +": no schema generated");
+		if (_builder == null) {
+			throw new IllegalStateException(
+					"No visit methods called on " + getClass().getName() + ": no schema generated");
 		}
-		
+
 		TypeElement typeElement = this.builtElement();
 		_builder.addType(typeElement);
 		ProtoFile protoFile = _builder.build();
 		return NativeProtobufSchema.construct(protoFile).forFirstType();
 	}
-	
+
 	@Override
 	public JsonObjectFormatVisitor expectObjectFormat(JavaType type) {
 		_builder = ProtoFile.builder(type.getRawClass().getName());

@@ -17,8 +17,10 @@ import com.squareup.protoparser.TypeElement;
 public class RootMessageVisitor
     extends JsonFormatVisitorWrapper.Base
 {
-
-    protected TypeElementBuilder _builder;
+	
+	protected DefinedProtobufSchemas _definedSchemas;
+    
+	protected TypeElementBuilder _builder;
     
     /*
     /**********************************************************************
@@ -28,6 +30,11 @@ public class RootMessageVisitor
 
     public RootMessageVisitor(SerializerProvider p) {
         super(p);
+    }
+    
+    public RootMessageVisitor(SerializerProvider p, DefinedProtobufSchemas definedSchemas) {
+    	super(p);
+    	_definedSchemas = (definedSchemas == null) ? new DefinedProtobufSchemas() : definedSchemas;
     }
 
     /*

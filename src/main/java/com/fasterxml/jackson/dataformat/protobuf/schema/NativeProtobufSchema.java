@@ -19,12 +19,21 @@ public class NativeProtobufSchema
     
     protected NativeProtobufSchema(ProtoFile input)
     {
-        _name = input.filePath();
-        _nativeTypes = input.typeElements();
+        this(input.filePath(), input.typeElements());
+    }
+    
+    protected NativeProtobufSchema(String name, List<TypeElement> types)
+    {
+        _name = name;
+        _nativeTypes = types;
     }
     
     public static NativeProtobufSchema construct(ProtoFile input) {
         return new NativeProtobufSchema(input);
+    }
+    
+    public static NativeProtobufSchema construct(String name, List<TypeElement> types) {
+        return new NativeProtobufSchema(name, types);
     }
     
     /**
