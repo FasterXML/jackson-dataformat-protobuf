@@ -88,8 +88,13 @@ public class NativeProtobufSchema
         return Arrays.asList(_messageNames);
     }
     
-    public String toSchema() {
-    	ProtoFile.Builder builder = ProtoFile.builder(_name);
+    @Override
+    public String toString() {
+    	return toString(_name);
+    }
+    
+    public String toString(String name) {
+    	ProtoFile.Builder builder = ProtoFile.builder(name);
     	builder.addTypes(_nativeTypes);
     	return builder.build().toSchema();
     }

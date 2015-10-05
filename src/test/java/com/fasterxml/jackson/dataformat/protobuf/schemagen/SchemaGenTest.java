@@ -8,6 +8,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.protobuf.ProtobufFactory;
 import com.fasterxml.jackson.dataformat.protobuf.ProtobufMapper;
 import com.fasterxml.jackson.dataformat.protobuf.ProtobufTestBase;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
@@ -17,6 +18,7 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchemaLoader;
 public class SchemaGenTest extends ProtobufTestBase {
 
 	public static class WithNestedClass {
+		@JsonProperty(required = true)
 		public String name;
 		public NestedClass[] nestedClasses;
 		public NestedEnum nestedEnum;
@@ -84,15 +86,14 @@ public class SchemaGenTest extends ProtobufTestBase {
 	}
 
 	public void testWithNestedClass() throws Exception {
-		ObjectMapper mapper = new ProtobufMapper();
+		ObjectMapper mapper = new ObjectMapper(new ProtobufFactory());
 		ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
 		mapper.acceptJsonFormatVisitor(WithNestedClass.class, gen);
 		ProtobufSchema schemaWrapper = gen.getGeneratedSchema();
 
 		assertNotNull(schemaWrapper);
 
-		String protoFile = schemaWrapper.getSource().toSchema();
-		System.out.println(protoFile);
+		// System.out.println(schemaWrapper.getSource().toString());
 	}
 
 	public void testWithIndexAnnotation() throws Exception {
@@ -103,7 +104,7 @@ public class SchemaGenTest extends ProtobufTestBase {
 
 		assertNotNull(schemaWrapper);
 
-		// System.out.println(schemaWrapper.getSource().toSchema());
+		// System.out.println(schemaWrapper.getSource().toString());
 
 		ProtobufMessage pMessage = schemaWrapper.getRootType();
 		assertEquals("f", pMessage.field(1).name);
@@ -124,12 +125,12 @@ public class SchemaGenTest extends ProtobufTestBase {
 		assertTrue(pMessage.field("name").required);
 		assertFalse(pMessage.field("boss").required);
 
-		String protoFile = schemaWrapper.getSource().toSchema();
-		// System.out.println(protoFile);
+		String protoFile = schemaWrapper.getSource().toString();
+		System.out.println(protoFile);
 
 		Employee empl = buildEmployee();
 
-		byte[] byteMsg = mapper.writerFor(Employee.class).with(schemaWrapper).writeValueAsBytes(empl);
+		byte[] byteMsg = mapper.writer(schemaWrapper).writeValueAsBytes(empl);
 		// System.out.println(byteMsg);
 		ProtobufSchema schema = ProtobufSchemaLoader.std.parse(protoFile);
 		Employee newEmpl = mapper.readerFor(Employee.class).with(schema).readValue(byteMsg);
@@ -148,7 +149,7 @@ public class SchemaGenTest extends ProtobufTestBase {
 		ProtobufSchema schemaWrapper = gen.getGeneratedSchema();
 		assertNotNull(schemaWrapper);
 
-		String protoFile = schemaWrapper.getSource().toSchema();
+		String protoFile = schemaWrapper.getSource().toString();
 		// System.out.println(protoFile);
 
 		MediaItem mediaItem = MediaItem.buildItem();
@@ -170,7 +171,7 @@ public class SchemaGenTest extends ProtobufTestBase {
 
 		assertNotNull(schemaWrapper);
 
-		String protoFile = schemaWrapper.getSource().toSchema();
+		String protoFile = schemaWrapper.getSource().toString();
 		// System.out.println(protoFile);
 
 		RootType rType = buildRootType();

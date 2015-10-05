@@ -7,7 +7,6 @@ import java.util.HashSet;
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonFormatVisitable;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor;
@@ -78,7 +77,7 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 		FieldElement.Builder fBuilder = FieldElement.builder();
 
 		fBuilder.name(writer.getName());
-		
+
 		fBuilder.tag(nextTag(writer));
 
 		JavaType type = writer.getType();
@@ -99,8 +98,8 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 	}
 
 	protected void getTagGenerator(BeanProperty writer) {
-		if(_tagGenerator == null) {
-			if(ProtobuffSchemaHelper.hasIndexAnnotation(writer)) {
+		if (_tagGenerator == null) {
+			if (ProtobuffSchemaHelper.hasIndexAnnotation(writer)) {
 				_tagGenerator = new AnnotationBasedTagGenerator();
 			} else {
 				_tagGenerator = new DefaultTagGenerator();
