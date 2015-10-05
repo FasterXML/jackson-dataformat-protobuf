@@ -126,7 +126,7 @@ public class SchemaGenTest extends ProtobufTestBase {
 		assertFalse(pMessage.field("boss").required);
 
 		String protoFile = schemaWrapper.getSource().toString();
-		System.out.println(protoFile);
+		// System.out.println(protoFile);
 
 		Employee empl = buildEmployee();
 
