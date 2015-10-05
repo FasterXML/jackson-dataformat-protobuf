@@ -14,7 +14,7 @@ public class EnumElementVisitor extends Base implements TypeElementBuilder {
 
 	EnumElement.Builder _builder;
 
-	int _tagCounter = 1;
+	DefaultTagGenerator _tagGenerator = new DefaultTagGenerator(0);
 
 	public EnumElementVisitor(SerializerProvider provider, JavaType type) {
 		if (!type.isEnumType()) {
@@ -33,7 +33,7 @@ public class EnumElementVisitor extends Base implements TypeElementBuilder {
 
 	@Override
 	public HashSet<JavaType> dependencies() {
-		return null;
+		return new HashSet<JavaType>();
 	}
 
 	@Override
@@ -46,11 +46,7 @@ public class EnumElementVisitor extends Base implements TypeElementBuilder {
 	protected EnumConstantElement buildEnumConstant(String name) {
 		EnumConstantElement.Builder builder = EnumConstantElement.builder();
 		builder.name(name);
-		builder.tag(nextTag());
+		builder.tag(_tagGenerator.nextTag());
 		return builder.build();
-	}
-
-	protected int nextTag() {
-		return _tagCounter++;
 	}
 }

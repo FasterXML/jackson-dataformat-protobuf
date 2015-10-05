@@ -39,7 +39,8 @@ public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
 		}
 		HashMap<JavaType, TypeElement> typeElements = new LinkedHashMap<JavaType, TypeElement>();
 		typeElements.put(_rootType, this.build());
-		resolveDependencies(this.dependencies(), typeElements);
+		
+		resolveDependencies(this.dependencies(), typeElements); //TODO: keep track of nested classes
 
 		return NativeProtobufSchema
 				.construct(_rootType.getRawClass().getName(), new ArrayList<TypeElement>(typeElements.values()))
@@ -66,11 +67,9 @@ public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
 
 		for (JavaType javaType : dependencies) {
 			if (!definedElements.containsKey(javaType)) {
-				TypeElementBuilder visitor = ProtobuffSchemaHelper.acceptTypeElement(_provider, javaType);
-				if (visitor.dependencies() != null) {
-					alsoResolve.addAll(visitor.dependencies());
-				}
-				definedElements.put(javaType, visitor.build());
+				TypeElementBuilder builder = ProtobuffSchemaHelper.acceptTypeElement(_provider, javaType);
+				alsoResolve.addAll(builder.dependencies());
+				definedElements.put(javaType, builder.build());
 			}
 		}
 

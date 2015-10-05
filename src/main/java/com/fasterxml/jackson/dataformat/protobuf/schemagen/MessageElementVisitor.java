@@ -23,7 +23,7 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 
 	MessageElement.Builder _builder;
 
-	int _tagCounter = 1;
+	TagGenerator _tagGenerator;
 
 	HashMap<JavaType, TypeElement> _nestedTypes = new HashMap<JavaType, TypeElement>();
 
@@ -78,7 +78,8 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 		FieldElement.Builder fBuilder = FieldElement.builder();
 
 		fBuilder.name(writer.getName());
-		fBuilder.tag(nextTag()); // TODO: use tag annotation for indexes.
+		
+		fBuilder.tag(nextTag(writer));
 
 		JavaType type = writer.getType();
 
@@ -92,8 +93,19 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 		return fBuilder.build();
 	}
 
-	protected int nextTag() {
-		return _tagCounter++;
+	protected int nextTag(BeanProperty writer) {
+		getTagGenerator(writer);
+		return _tagGenerator.nextTag(writer);
+	}
+
+	protected void getTagGenerator(BeanProperty writer) {
+		if(_tagGenerator == null) {
+			if(ProtobuffSchemaHelper.hasIndexAnnotation(writer)) {
+				_tagGenerator = new AnnotationBasedTagGenerator();
+			} else {
+				_tagGenerator = new DefaultTagGenerator();
+			}
+		}
 	}
 
 	protected DataType getDataType(JavaType type) throws JsonMappingException {
@@ -104,7 +116,7 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 		if (_type != type) { // No self ref
 			if (Arrays.asList(_type.getRawClass().getDeclaredClasses()).contains(type.getRawClass())) { // nested
 																										// class
-				if (_nestedTypes.containsKey(type)) { // create nested type
+				if (!_nestedTypes.containsKey(type)) { // create nested type
 					TypeElement nestedType = getTypeElement(type);
 					_nestedTypes.put(type, nestedType);
 				}
@@ -116,16 +128,8 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 	}
 
 	protected TypeElement getTypeElement(JavaType type) throws JsonMappingException {
-		SerializerProvider provider = getProvider();
-		JsonSerializer<Object> serializer = provider.findValueSerializer(type, null);
-
-		if (type.isEnumType()) {
-			throw new UnsupportedOperationException("enums are not supported (yet)");
-		}
-
-		ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider);
-		serializer.acceptJsonFormatVisitor(visitor, type);
-		_dependencies.addAll(visitor.dependencies());
-		return visitor.build();
+		TypeElementBuilder builder = ProtobuffSchemaHelper.acceptTypeElement(_provider, type);
+		_dependencies.addAll(builder.dependencies());
+		return builder.build();
 	}
 }

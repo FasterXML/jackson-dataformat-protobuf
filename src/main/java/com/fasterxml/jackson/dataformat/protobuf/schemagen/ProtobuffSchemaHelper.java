@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -45,5 +47,14 @@ public class ProtobuffSchemaHelper {
 		ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider);
 		serializer.acceptJsonFormatVisitor(visitor, javaType);
 		return visitor;
+	}
+	
+	public static JsonProperty getJsonProperty(BeanProperty writer) {
+		return writer.getAnnotation(JsonProperty.class);
+	}
+	
+	public static boolean hasIndexAnnotation(BeanProperty writer) {
+		JsonProperty jProperty = getJsonProperty(writer);
+		return jProperty != null && jProperty.index() != JsonProperty.INDEX_UNKNOWN;
 	}
 }
