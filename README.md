@@ -46,7 +46,7 @@ between v2 and v3.
 ## Creating ObjectMapper
 Usage is as with basic ```JsonFactory```; most commonly you will just construct a standard ObjectMapper with ```com.fasterxml.jackson.dataformat.protobuf.ProtobufFactory```, like so:
 ```java
-ObjectMapper mapper = new ObjectMapper(new ProtobufFactory());
+ObjectMapper mapper = new ProtobufMapper();
 ```
 
 ## Reading Protobuf Data
