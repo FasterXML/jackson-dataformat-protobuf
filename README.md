@@ -46,6 +46,10 @@ between v2 and v3.
 ## Creating ObjectMapper
 Usage is as with basic ```JsonFactory```; most commonly you will just construct a standard ObjectMapper with ```com.fasterxml.jackson.dataformat.protobuf.ProtobufFactory```, like so:
 ```java
+ObjectMapper mapper = new ObjectMapper(new ProtobufFactory());
+```
+Or the easy way, like:
+```java
 ObjectMapper mapper = new ProtobufMapper();
 ```
 
@@ -101,6 +105,7 @@ ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
 mapper.acceptJsonFormatVisitor(POJO.class, gen);
 ProtobufSchema schemaWrapper = gen.getProtobufSchema();
 NativeProtobufSchema nativeProtobufSchema = schemaWrapper.getSource();
+
 String asProtofile = nativeProtobufSchema.toString();
 ```
 
