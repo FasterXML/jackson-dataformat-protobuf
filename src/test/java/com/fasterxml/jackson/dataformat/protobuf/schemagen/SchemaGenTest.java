@@ -25,39 +25,33 @@ public class SchemaGenTest extends ProtobufTestBase {
 	public static class Employee {
 		@JsonProperty(required = true)
 		public String name;
+
 		@JsonProperty(required = true)
+
 		public int age;
+
 		public String[] emails;
+
 		public Employee boss;
 	}
 
-	public void testSimplePojoGenProtobufSchema() throws Exception {
-		ObjectMapper mapper = new ProtobufMapper();
-		ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
-		mapper.acceptJsonFormatVisitor(RootType.class, gen);
-		ProtobufSchema schemaWrapper = gen.getGeneratedSchema();
-
-		assertNotNull(schemaWrapper);
-
-		String protoFile = schemaWrapper.getSource().toSchema();
-		System.out.println(protoFile);
-
+	protected RootType buildRootType() {
 		RootType rType = new RootType();
 		rType.name = "rTpye";
 		rType.value = 100;
 		rType.other = new ArrayList<String>();
 		rType.other.add("12345");
 		rType.other.add("abcdefg");
+		return rType;
+	}
 
-		byte[] msg = mapper.writerFor(RootType.class).with(schemaWrapper).writeValueAsBytes(rType);
-		System.out.println(msg);
-		ProtobufSchema schema = ProtobufSchemaLoader.std.parse(protoFile);
-		RootType parsedRootType = mapper.readerFor(RootType.class).with(schema).readValue(msg);
-
-		System.out.println(parsedRootType);
-		assertEquals(rType.name, parsedRootType.name);
-		assertEquals(rType.value, parsedRootType.value);
-		assertEquals(rType.other, parsedRootType.other);
+	protected Employee buildEmployee() {
+		Employee empl = new Employee();
+		empl.name = "Bobbee";
+		empl.age = 39;
+		empl.emails = new String[] { "bob@aol.com", "bobby@gmail.com" };
+		empl.boss = null;
+		return empl;
 	}
 
 	public void testSelfRefPojoGenProtobufSchema() throws Exception {
@@ -71,11 +65,7 @@ public class SchemaGenTest extends ProtobufTestBase {
 		String protoFile = schemaWrapper.getSource().toSchema();
 		System.out.println(protoFile);
 
-		Employee empl = new Employee();
-		empl.name = "Bobbee";
-		empl.age = 39;
-		empl.emails = new String[] { "bob@aol.com", "bobby@gmail.com" };
-		empl.boss = null;
+		Employee empl = buildEmployee();
 
 		byte[] byteMsg = mapper.writerFor(Employee.class).with(schemaWrapper).writeValueAsBytes(empl);
 		System.out.println(byteMsg);
@@ -108,5 +98,29 @@ public class SchemaGenTest extends ProtobufTestBase {
 
 		System.out.println(deserMediaItem);
 		assertEquals(mediaItem, deserMediaItem);
+	}
+
+	public void testSimplePojoGenProtobufSchema() throws Exception {
+		ObjectMapper mapper = new ProtobufMapper();
+		ProtobufSchemaGenerator gen = new ProtobufSchemaGenerator();
+		mapper.acceptJsonFormatVisitor(RootType.class, gen);
+		ProtobufSchema schemaWrapper = gen.getGeneratedSchema();
+	
+		assertNotNull(schemaWrapper);
+	
+		String protoFile = schemaWrapper.getSource().toSchema();
+		System.out.println(protoFile);
+	
+		RootType rType = buildRootType();
+	
+		byte[] msg = mapper.writerFor(RootType.class).with(schemaWrapper).writeValueAsBytes(rType);
+		System.out.println(msg);
+		ProtobufSchema schema = ProtobufSchemaLoader.std.parse(protoFile);
+		RootType parsedRootType = mapper.readerFor(RootType.class).with(schema).readValue(msg);
+	
+		System.out.println(parsedRootType);
+		assertEquals(rType.name, parsedRootType.name);
+		assertEquals(rType.value, parsedRootType.value);
+		assertEquals(rType.other, parsedRootType.other);
 	}
 }

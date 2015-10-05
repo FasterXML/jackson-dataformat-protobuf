@@ -1,5 +1,6 @@
 package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -7,13 +8,10 @@ import java.util.Set;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor;
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonStringFormatVisitor;
 import com.fasterxml.jackson.dataformat.protobuf.schema.NativeProtobufSchema;
 import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufSchema;
-import com.squareup.protoparser.ProtoFile;
-import com.squareup.protoparser.ProtoFile.Syntax;
 import com.squareup.protoparser.TypeElement;
 
 /**
@@ -24,9 +22,9 @@ import com.squareup.protoparser.TypeElement;
  * which will invoke necessary callbacks.
  */
 public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
-	
+
 	protected HashSet<JavaType> _generated;
-	
+
 	protected JavaType _rootType;
 
 	public ProtobufSchemaGenerator() {
@@ -42,14 +40,12 @@ public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
 		HashMap<JavaType, TypeElement> typeElements = new LinkedHashMap<JavaType, TypeElement>();
 		typeElements.put(_rootType, this.build());
 		resolveDependencies(this.dependencies(), typeElements);
-		
-		ProtoFile.Builder builder = ProtoFile.builder(_rootType.getRawClass().getName());
-		builder.syntax(Syntax.PROTO_2);
-		builder.addTypes(typeElements.values());
-		ProtoFile protoFile = builder.build();
-		return NativeProtobufSchema.construct(protoFile).forFirstType();
+
+		return NativeProtobufSchema
+				.construct(_rootType.getRawClass().getName(), new ArrayList<TypeElement>(typeElements.values()))
+				.forFirstType();
 	}
-	
+
 	@Override
 	public JsonObjectFormatVisitor expectObjectFormat(JavaType type) {
 		_rootType = type;
@@ -60,26 +56,25 @@ public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
 	public JsonStringFormatVisitor expectStringFormat(JavaType type) {
 		return _throwUnsupported("'String' type not supported as root type by protobuf");
 	}
-	
-	protected void resolveDependencies(Set<JavaType> dependencies, HashMap<JavaType, TypeElement> definedElements) throws JsonMappingException {
+
+	protected void resolveDependencies(Set<JavaType> dependencies, HashMap<JavaType, TypeElement> definedElements)
+			throws JsonMappingException {
+		if (dependencies.isEmpty())
+			return;
+
 		Set<JavaType> alsoResolve = new HashSet<JavaType>();
-		
+
 		for (JavaType javaType : dependencies) {
-			if(!definedElements.containsKey(javaType)) {
-				JsonSerializer<Object> serializer = _provider.findValueSerializer(javaType, null);
-				ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(_provider);
-				serializer.acceptJsonFormatVisitor(visitor, javaType);
-				if(visitor.dependencies() != null) {
+			if (!definedElements.containsKey(javaType)) {
+				TypeElementBuilder visitor = ProtobuffSchemaHelper.acceptTypeElement(_provider, javaType);
+				if (visitor.dependencies() != null) {
 					alsoResolve.addAll(visitor.dependencies());
 				}
 				definedElements.put(javaType, visitor.build());
 			}
 		}
-		
+
 		alsoResolve.removeAll(definedElements.values());
-		
-		if(!alsoResolve.isEmpty()) { //recursive resolve
-			resolveDependencies(alsoResolve, definedElements);
-		}
+		resolveDependencies(alsoResolve, definedElements); // recursive resolve
 	}
 }

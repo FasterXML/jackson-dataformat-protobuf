@@ -38,7 +38,7 @@ public class ProtobufSchemaLoader
     /* Public API
     /**********************************************************
      */
-
+    
     public ProtobufSchema load(URL url) throws IOException {
         return loadNative(url).forFirstType();
     }

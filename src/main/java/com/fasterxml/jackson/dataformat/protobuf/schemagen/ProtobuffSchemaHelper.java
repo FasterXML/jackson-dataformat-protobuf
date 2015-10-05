@@ -5,10 +5,16 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.squareup.protoparser.DataType;
 import com.squareup.protoparser.DataType.ScalarType;
 
 public class ProtobuffSchemaHelper {
+	
+	private ProtobuffSchemaHelper(){}
+	
 	public static String getNamespace(JavaType type) {
 		Class<?> cls = type.getRawClass();
 		Package pkg = cls.getPackage();
@@ -32,5 +38,12 @@ public class ProtobuffSchemaHelper {
 			return DataType.ScalarType.DOUBLE;
 		}
 		return null;
+	}
+	
+	public static TypeElementBuilder acceptTypeElement(SerializerProvider provider, JavaType javaType) throws JsonMappingException {
+		JsonSerializer<Object> serializer = provider.findValueSerializer(javaType, null);
+		ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider);
+		serializer.acceptJsonFormatVisitor(visitor, javaType);
+		return visitor;
 	}
 }

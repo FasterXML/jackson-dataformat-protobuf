@@ -10,7 +10,6 @@ import com.squareup.protoparser.EnumConstantElement;
 import com.squareup.protoparser.EnumElement;
 import com.squareup.protoparser.TypeElement;
 
-
 public class EnumElementVisitor extends Base implements TypeElementBuilder {
 
 	EnumElement.Builder _builder;
@@ -36,7 +35,7 @@ public class EnumElementVisitor extends Base implements TypeElementBuilder {
 	public HashSet<JavaType> dependencies() {
 		return null;
 	}
-	
+
 	@Override
 	public void enumTypes(Set<String> enums) {
 		for (String eName : enums) {

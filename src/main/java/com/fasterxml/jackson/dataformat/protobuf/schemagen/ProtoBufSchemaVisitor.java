@@ -74,8 +74,8 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 		if (!type.isEnumType()) {
 			return _throwUnsupported("'String' type not supported as root type by protobuf");
 		}
-		
-		EnumElementVisitor visitor  = new EnumElementVisitor(_provider, type);
+
+		EnumElementVisitor visitor = new EnumElementVisitor(_provider, type);
 		_builder = visitor;
 		return visitor;
 	}

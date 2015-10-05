@@ -26,18 +26,18 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 	int _tagCounter = 1;
 
 	HashMap<JavaType, TypeElement> _nestedTypes = new HashMap<JavaType, TypeElement>();
-	
+
 	JavaType _type;
-	
+
 	HashSet<JavaType> _dependencies;
 
 	public MessageElementVisitor(SerializerProvider provider, JavaType type) {
 		super(provider);
-		
+
 		_type = type;
-		
+
 		_dependencies = new HashSet<JavaType>();
-		
+
 		_builder = MessageElement.builder();
 		_builder.name(type.getRawClass().getSimpleName());
 		_builder.documentation("Message for " + type.toCanonical());
