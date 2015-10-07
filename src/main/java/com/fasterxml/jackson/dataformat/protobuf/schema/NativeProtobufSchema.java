@@ -13,7 +13,7 @@ import com.squareup.protoparser.*;
 public class NativeProtobufSchema
 {
     protected final String _name;
-    protected final List<TypeElement> _nativeTypes;
+    protected final Collection<TypeElement> _nativeTypes;
 
     protected volatile String[] _messageNames;
     
@@ -22,7 +22,7 @@ public class NativeProtobufSchema
         this(input.filePath(), input.typeElements());
     }
     
-    protected NativeProtobufSchema(String name, List<TypeElement> types)
+    protected NativeProtobufSchema(String name, Collection<TypeElement> types)
     {
         _name = name;
         _nativeTypes = types;
@@ -32,7 +32,7 @@ public class NativeProtobufSchema
         return new NativeProtobufSchema(input);
     }
     
-    public static NativeProtobufSchema construct(String name, List<TypeElement> types) {
+    public static NativeProtobufSchema construct(String name, Collection<TypeElement> types) {
         return new NativeProtobufSchema(name, types);
     }
     

@@ -1,10 +1,8 @@
 package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Set;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -33,18 +31,25 @@ public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
 	}
 
 	public ProtobufSchema getGeneratedSchema() throws JsonMappingException {
-		if (_rootType == null) {
+		return getGeneratedSchema(true);
+	}
+
+	public ProtobufSchema getGeneratedSchema(boolean appendDependencies) throws JsonMappingException {
+		if (_rootType == null || _builder == null) {
 			throw new IllegalStateException(
 					"No visit methods called on " + getClass().getName() + ": no schema generated");
 		}
-		HashMap<JavaType, TypeElement> typeElements = new LinkedHashMap<JavaType, TypeElement>();
-		typeElements.put(_rootType, this.build());
-		
-		resolveDependencies(this.dependencies(), typeElements); //TODO: keep track of nested classes
 
-		return NativeProtobufSchema
-				.construct(_rootType.getRawClass().getName(), new ArrayList<TypeElement>(typeElements.values()))
-				.forFirstType();
+		Collection<TypeElement> types;
+
+		if (appendDependencies) {
+			types = this.buildWithDependencies();
+		} else {
+			types = new ArrayList<>();
+			types.add(this.build());
+		}
+
+		return NativeProtobufSchema.construct(_rootType.getRawClass().getName(), types).forFirstType();
 	}
 
 	@Override
@@ -56,24 +61,5 @@ public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
 	@Override
 	public JsonStringFormatVisitor expectStringFormat(JavaType type) {
 		return _throwUnsupported("'String' type not supported as root type by protobuf");
-	}
-
-	protected void resolveDependencies(Set<JavaType> dependencies, HashMap<JavaType, TypeElement> definedElements)
-			throws JsonMappingException {
-		if (dependencies.isEmpty())
-			return;
-
-		Set<JavaType> alsoResolve = new HashSet<JavaType>();
-
-		for (JavaType javaType : dependencies) {
-			if (!definedElements.containsKey(javaType)) {
-				TypeElementBuilder builder = ProtobuffSchemaHelper.acceptTypeElement(_provider, javaType);
-				alsoResolve.addAll(builder.dependencies());
-				definedElements.put(javaType, builder.build());
-			}
-		}
-
-		alsoResolve.removeAll(definedElements.values());
-		resolveDependencies(alsoResolve, definedElements); // recursive resolve
 	}
 }

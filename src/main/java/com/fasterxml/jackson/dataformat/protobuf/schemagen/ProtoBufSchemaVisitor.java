@@ -1,5 +1,6 @@
 package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JavaType;
@@ -18,7 +19,11 @@ import com.squareup.protoparser.TypeElement;
 
 public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base implements TypeElementBuilder {
 
+	protected DefinedTypeElementBuilders _definedTypeElementBuilders;
+
 	protected TypeElementBuilder _builder;
+
+	protected boolean _isNested;
 
 	/*
 	 * /**********************************************************************
@@ -26,8 +31,18 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 	 * /**********************************************************************
 	 */
 
-	public ProtoBufSchemaVisitor(SerializerProvider p) {
-		super(p);
+	public ProtoBufSchemaVisitor(SerializerProvider provider) {
+		this(provider, null, false);
+	}
+
+	public ProtoBufSchemaVisitor(SerializerProvider provider, DefinedTypeElementBuilders definedTypeElementBuilders,
+			boolean isNested) {
+		super(provider);
+
+		_definedTypeElementBuilders = (definedTypeElementBuilders != null) ? definedTypeElementBuilders
+				: new DefinedTypeElementBuilders();
+
+		_isNested = isNested;
 	}
 
 	/*
@@ -41,9 +56,14 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 		return _builder.build();
 	}
 
-	@Override
-	public Set<JavaType> dependencies() {
-		return _builder.dependencies();
+	public Set<TypeElement> buildWithDependencies() {
+		Set<TypeElement> allTypeElements = new LinkedHashSet<>();
+		allTypeElements.add(build());
+		
+		for(TypeElementBuilder builder : _definedTypeElementBuilders.getDependencyBuilders()) {
+			allTypeElements.add(builder.build());
+		}
+		return allTypeElements;
 	}
 
 	/*
@@ -54,7 +74,8 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 
 	@Override
 	public JsonObjectFormatVisitor expectObjectFormat(JavaType type) {
-		MessageElementVisitor visitor = new MessageElementVisitor(_provider, type);
+		MessageElementVisitor visitor = new MessageElementVisitor(_provider, type, _definedTypeElementBuilders,
+				_isNested);
 		_builder = visitor;
 		return visitor;
 	}
@@ -75,7 +96,7 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 			return _throwUnsupported("'String' type not supported as root type by protobuf");
 		}
 
-		EnumElementVisitor visitor = new EnumElementVisitor(_provider, type);
+		EnumElementVisitor visitor = new EnumElementVisitor(_provider, type, _definedTypeElementBuilders, _isNested);
 		_builder = visitor;
 		return visitor;
 	}

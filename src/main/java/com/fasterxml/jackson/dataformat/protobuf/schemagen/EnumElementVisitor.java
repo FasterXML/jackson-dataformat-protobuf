@@ -1,6 +1,5 @@
 package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.JavaType;
@@ -16,7 +15,9 @@ public class EnumElementVisitor extends Base implements TypeElementBuilder {
 
 	DefaultTagGenerator _tagGenerator = new DefaultTagGenerator(0);
 
-	public EnumElementVisitor(SerializerProvider provider, JavaType type) {
+	public EnumElementVisitor(SerializerProvider provider, JavaType type,
+			DefinedTypeElementBuilders definedTypeElementBuilders, boolean isNested) {
+		
 		if (!type.isEnumType()) {
 			throw new IllegalArgumentException("Expected an enum, however given type is " + type);
 		}
@@ -24,16 +25,13 @@ public class EnumElementVisitor extends Base implements TypeElementBuilder {
 		_builder = EnumElement.builder();
 		_builder.name(type.getRawClass().getSimpleName());
 		_builder.documentation("Enum for " + type.toCanonical());
+
+		definedTypeElementBuilders.AddTypeElement(type, this, isNested);
 	}
 
 	@Override
 	public TypeElement build() {
 		return _builder.build();
-	}
-
-	@Override
-	public HashSet<JavaType> dependencies() {
-		return new HashSet<JavaType>();
 	}
 
 	@Override

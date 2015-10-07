@@ -42,13 +42,6 @@ public class ProtobuffSchemaHelper {
 		return null;
 	}
 	
-	public static TypeElementBuilder acceptTypeElement(SerializerProvider provider, JavaType javaType) throws JsonMappingException {
-		JsonSerializer<Object> serializer = provider.findValueSerializer(javaType, null);
-		ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider);
-		serializer.acceptJsonFormatVisitor(visitor, javaType);
-		return visitor;
-	}
-	
 	public static JsonProperty getJsonProperty(BeanProperty writer) {
 		return writer.getAnnotation(JsonProperty.class);
 	}
@@ -56,5 +49,13 @@ public class ProtobuffSchemaHelper {
 	public static boolean hasIndexAnnotation(BeanProperty writer) {
 		JsonProperty jProperty = getJsonProperty(writer);
 		return jProperty != null && jProperty.index() != JsonProperty.INDEX_UNKNOWN;
+	}
+
+	public static TypeElementBuilder acceptTypeElement(SerializerProvider provider, JavaType type,
+			DefinedTypeElementBuilders definedTypeElementBuilders, boolean isNested) throws JsonMappingException {
+		JsonSerializer<Object> serializer = provider.findValueSerializer(type, null);
+		ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider, definedTypeElementBuilders, isNested);
+		serializer.acceptJsonFormatVisitor(visitor, type);
+		return visitor;
 	}
 }

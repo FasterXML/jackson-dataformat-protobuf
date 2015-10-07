@@ -1,8 +1,8 @@
 package com.fasterxml.jackson.dataformat.protobuf.schemagen;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.JavaType;
@@ -24,33 +24,30 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 
 	TagGenerator _tagGenerator;
 
-	HashMap<JavaType, TypeElement> _nestedTypes = new HashMap<JavaType, TypeElement>();
-
 	JavaType _type;
 
-	HashSet<JavaType> _dependencies;
+	Set<JavaType> _nestedTypes = new HashSet<>();
 
-	public MessageElementVisitor(SerializerProvider provider, JavaType type) {
+	DefinedTypeElementBuilders _definedTypeElementBuilders;
+
+	public MessageElementVisitor(SerializerProvider provider, JavaType type,
+			DefinedTypeElementBuilders definedTypeElementBuilders, boolean isNested) {
 		super(provider);
 
-		_type = type;
+		_definedTypeElementBuilders = definedTypeElementBuilders;
 
-		_dependencies = new HashSet<JavaType>();
+		_type = type;
 
 		_builder = MessageElement.builder();
 		_builder.name(type.getRawClass().getSimpleName());
 		_builder.documentation("Message for " + type.toCanonical());
+
+		_definedTypeElementBuilders.AddTypeElement(type, this, isNested);
 	}
 
 	@Override
 	public TypeElement build() {
-		_builder.addTypes(_nestedTypes.values());
 		return _builder.build();
-	}
-
-	@Override
-	public HashSet<JavaType> dependencies() {
-		return _dependencies;
 	}
 
 	@Override
@@ -109,26 +106,26 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
 
 	protected DataType getDataType(JavaType type) throws JsonMappingException {
 		ScalarType sType = ProtobuffSchemaHelper.getScalarType(type);
-		if (sType != null)
+		if (sType != null) { // Is scalar type ref
 			return sType;
+		}
 
-		if (_type != type) { // No self ref
+		if (!_definedTypeElementBuilders.containsBuilderFor(type)) { // No self
+																		// ref
 			if (Arrays.asList(_type.getRawClass().getDeclaredClasses()).contains(type.getRawClass())) { // nested
 																										// class
-				if (!_nestedTypes.containsKey(type)) { // create nested type
-					TypeElement nestedType = getTypeElement(type);
-					_nestedTypes.put(type, nestedType);
+				if (!_nestedTypes.contains(type)) { // create nested type
+					_nestedTypes.add(type);
+
+					TypeElementBuilder nestedTypeBuilder = ProtobuffSchemaHelper.acceptTypeElement(_provider, type,
+							_definedTypeElementBuilders, true);
+
+					_builder.addType(nestedTypeBuilder.build());
 				}
 			} else { // tracking non-nested types to generate them later
-				_dependencies.add(type);
+				ProtobuffSchemaHelper.acceptTypeElement(_provider, type, _definedTypeElementBuilders, false);
 			}
 		}
 		return NamedType.create(type.getRawClass().getSimpleName());
-	}
-
-	protected TypeElement getTypeElement(JavaType type) throws JsonMappingException {
-		TypeElementBuilder builder = ProtobuffSchemaHelper.acceptTypeElement(_provider, type);
-		_dependencies.addAll(builder.dependencies());
-		return builder.build();
 	}
 }
