@@ -4,17 +4,13 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.BeanProperty;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.*;
+
 import com.squareup.protoparser.DataType;
 import com.squareup.protoparser.DataType.ScalarType;
 
-public class ProtobuffSchemaHelper {
-	
+public class ProtobuffSchemaHelper
+{
 	private ProtobuffSchemaHelper(){}
 	
 	public static String getNamespace(JavaType type) {
@@ -41,21 +37,16 @@ public class ProtobuffSchemaHelper {
 		}
 		return null;
 	}
-	
-	public static JsonProperty getJsonProperty(BeanProperty writer) {
-		return writer.getAnnotation(JsonProperty.class);
-	}
-	
-	public static boolean hasIndexAnnotation(BeanProperty writer) {
-		JsonProperty jProperty = getJsonProperty(writer);
-		return jProperty != null && jProperty.index() != JsonProperty.INDEX_UNKNOWN;
-	}
 
-	public static TypeElementBuilder acceptTypeElement(SerializerProvider provider, JavaType type,
-			DefinedTypeElementBuilders definedTypeElementBuilders, boolean isNested) throws JsonMappingException {
-		JsonSerializer<Object> serializer = provider.findValueSerializer(type, null);
-		ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider, definedTypeElementBuilders, isNested);
-		serializer.acceptJsonFormatVisitor(visitor, type);
-		return visitor;
-	}
+    public static boolean hasIndex(BeanProperty writer) {
+        return writer.getMetadata().hasIndex();
+    }
+	
+    public static TypeElementBuilder acceptTypeElement(SerializerProvider provider, JavaType type,
+            DefinedTypeElementBuilders definedTypeElementBuilders, boolean isNested) throws JsonMappingException {
+        JsonSerializer<Object> serializer = provider.findValueSerializer(type, null);
+        ProtoBufSchemaVisitor visitor = new ProtoBufSchemaVisitor(provider, definedTypeElementBuilders, isNested);
+        serializer.acceptJsonFormatVisitor(visitor, type);
+        return visitor;
+    }
 }

@@ -16,7 +16,7 @@ public class DefaultTagGenerator implements TagGenerator {
 
 	@Override
 	public int nextTag(BeanProperty writer) {
-		if (ProtobuffSchemaHelper.hasIndexAnnotation(writer)) {
+		if (ProtobuffSchemaHelper.hasIndex(writer)) {
 			throw new IllegalStateException(writer.getFullName()
 					+ " is annotated with 'JsonProperty.index', however not all properties of type "
 					+ writer.getWrapperName().getSimpleName()
