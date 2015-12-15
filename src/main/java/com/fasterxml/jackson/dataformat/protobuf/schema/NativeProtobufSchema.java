@@ -13,18 +13,27 @@ import com.squareup.protoparser.*;
 public class NativeProtobufSchema
 {
     protected final String _name;
-    protected final List<TypeElement> _nativeTypes;
+    protected final Collection<TypeElement> _nativeTypes;
 
     protected volatile String[] _messageNames;
     
     protected NativeProtobufSchema(ProtoFile input)
     {
-        _name = input.filePath();
-        _nativeTypes = input.typeElements();
+        this(input.filePath(), input.typeElements());
     }
-
+    
+    protected NativeProtobufSchema(String name, Collection<TypeElement> types)
+    {
+        _name = name;
+        _nativeTypes = types;
+    }
+    
     public static NativeProtobufSchema construct(ProtoFile input) {
         return new NativeProtobufSchema(input);
+    }
+    
+    public static NativeProtobufSchema construct(String name, Collection<TypeElement> types) {
+        return new NativeProtobufSchema(name, types);
     }
     
     /**
@@ -77,6 +86,17 @@ public class NativeProtobufSchema
             _messageNames = _getMessageNames();
         }
         return Arrays.asList(_messageNames);
+    }
+    
+    @Override
+    public String toString() {
+    	return toString(_name);
+    }
+    
+    public String toString(String name) {
+    	ProtoFile.Builder builder = ProtoFile.builder(name);
+    	builder.addTypes(_nativeTypes);
+    	return builder.build().toSchema();
     }
 
     /*

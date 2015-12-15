@@ -86,7 +86,7 @@ public class ProtobufSchema implements FormatSchema
     public List<String> getMessageTypes() {
         return _source.getMessageNames();
     }
-
+    
     /**
      * Accessor to get type id for this {@link FormatSchema}, used by code Jackson
      * databinding functionality. Not usually needed by application developers.

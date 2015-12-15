@@ -35,11 +35,11 @@ public class TypeResolver
         _resolvedMessageTypes = Collections.emptyMap();
     }
 
-    public static TypeResolver construct(List<TypeElement> nativeTypes) {
+    public static TypeResolver construct(Collection<TypeElement> nativeTypes) {
         return construct(null, nativeTypes);
     }
     
-    protected static TypeResolver construct(TypeResolver parent, List<TypeElement> nativeTypes)
+    protected static TypeResolver construct(TypeResolver parent, Collection<TypeElement> nativeTypes)
     {
         Map<String,MessageElement> nativeMessages = null;
         Map<String,ProtobufEnum> enumTypes = null;

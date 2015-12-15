@@ -63,7 +63,6 @@ abstractions.
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
       <version>${jackson.version.annotations}</version>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 

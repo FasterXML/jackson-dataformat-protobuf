@@ -10,7 +10,7 @@ import com.fasterxml.jackson.dataformat.protobuf.schema.ProtobufMessage;
 
 import junit.framework.TestCase;
 
-abstract class ProtobufTestBase extends TestCase
+public abstract class ProtobufTestBase extends TestCase
 {
     /*
     /**********************************************************
@@ -281,7 +281,7 @@ abstract class ProtobufTestBase extends TestCase
 
     // // // POJOs for "JVM-serializers" case
     
-    static class  MediaItem
+    protected static class  MediaItem
     {
          public Media media;
          public List<Image> images;
@@ -296,7 +296,7 @@ abstract class ProtobufTestBase extends TestCase
              return this;
          }
 
-         static MediaItem buildItem()
+         public static MediaItem buildItem()
          {
              Media content = new Media();
              content.player = Player.JAVA;
