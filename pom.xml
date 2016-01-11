@@ -9,7 +9,7 @@
   <groupId>com.fasterxml.jackson.dataformat</groupId>
   <artifactId>jackson-dataformat-protobuf</artifactId>
   <name>Jackson-dataformat-protobuf</name>
-  <version>2.7.0-rc4-SNAPSHOT</version>
+  <version>2.7.0-SNAPSHOT</version>
   <packaging>bundle</packaging>
   <description>Support for reading and writing protobuf-encoded data via Jackson
 abstractions.
@@ -23,8 +23,7 @@ abstractions.
   </scm>
 
   <properties>
-    <jackson.version.annotations>2.7.0-rc3</jackson.version.annotations>
-    <jackson.version.core>2.7.0-rc3</jackson.version.core>
+    <jackson.version.core>2.7.0</jackson.version.core>
 
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
     <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
@@ -62,7 +61,6 @@ abstractions.
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.version.annotations}</version>
     </dependency>
   </dependencies>
 
