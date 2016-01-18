@@ -21,6 +21,8 @@ Protobuf module requires Java 7, due to `protoparser` requiring Java 7.
 # Status
 
 [![Build Status](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf.svg)](https://travis-ci.org/FasterXML/jackson-dataformat-protobuf)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.fasterxml.jackson.dataformat/jackson-dataformat-protobuf/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.fasterxml.jackson.dataformat/jackson-dataformat-protobuf/)
+[![Javadoc](https://javadoc-emblem.rhcloud.com/doc/com.fasterxml.jackson.dataformat/jackson-dataformat-protobuf/badge.svg)](http://www.javadoc.io/doc/com.fasterxml.jackson.dataformat/jackson-dataformat-protobuf)
 
 With release 2.6.0 (Jul-2015), this module is considered stable, although number of production deployments is still limited.
 
