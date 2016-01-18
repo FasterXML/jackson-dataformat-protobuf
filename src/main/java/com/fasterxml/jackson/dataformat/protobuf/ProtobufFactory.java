@@ -103,9 +103,22 @@ public class ProtobufFactory extends JsonFactory
         return true;
     }
 
+    // No format-specific configuration, yet:
+/*    
+    @Override
+    public Class<? extends FormatFeature> getFormatReadFeatureType() {
+        return null;
+    }
+
+    @Override
+    public Class<? extends FormatFeature> getFormatWriteFeatureType() {
+        return null;
+    }
+*/
+
     /*
     /**********************************************************
-    /* Overridden parser factory method
+    /* Overridden parser factory methods
     /**********************************************************
      */
 
@@ -150,9 +163,9 @@ public class ProtobufFactory extends JsonFactory
 
     /**
      * Method for constructing {@link JsonGenerator} for generating
-     * CBOR-encoded output.
+     * protobuf-encoded output.
      *<p>
-     * Since CBOR format always uses UTF-8 internally, no encoding need
+     * Since protobuf format always uses UTF-8 internally, no encoding need
      * to be passed to this method.
      */
     @Override
@@ -227,5 +240,4 @@ public class ProtobufFactory extends JsonFactory
     protected <T> T _nonByteSource() {
         throw new UnsupportedOperationException("Can not create generator for non-byte-based source");
     }
-    
 }
