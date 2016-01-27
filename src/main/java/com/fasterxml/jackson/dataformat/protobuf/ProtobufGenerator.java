@@ -143,7 +143,17 @@ public class ProtobufGenerator extends GeneratorBase
 //        _currentContext = _rootContext = ProtobufWriteContext.createRootContext(this, schema);
         _pbContext = _rootContext = ProtobufWriteContext.createRootContext(schema.getRootType());
     }
-    
+
+    @Override
+    public Object getCurrentValue() {
+        return _pbContext.getCurrentValue();
+    }
+
+    @Override
+    public void setCurrentValue(Object v) {
+        _pbContext.setCurrentValue(v);
+    }
+
     /*                                                                                       
     /**********************************************************                              
     /* Versioned                                                                             
