@@ -110,8 +110,18 @@ public class ProtobufGenerator extends GeneratorBase
      */
     protected ProtobufWriteContext _pbContext;
 
+    /**
+     * Currently active output buffer, place where appends occur.
+     */
     protected byte[] _currBuffer;
 
+    // TODO: remove work around in 2.8?
+    /**
+     * The first allocated (or recycled) buffer instance; needed to avoid
+     * issue [dataformat-protobuf#14].
+     */
+    protected byte[] _origCurrBuffer;
+    
     protected int _currStart;
 
     protected int _currPtr;
@@ -130,7 +140,7 @@ public class ProtobufGenerator extends GeneratorBase
         _ioContext = ctxt;
         _output = output;
         _pbContext = _rootContext = ProtobufWriteContext.createNullContext();
-        _currBuffer = ctxt.allocWriteEncodingBuffer();
+        _currBuffer = _origCurrBuffer = ctxt.allocWriteEncodingBuffer();
     }
 
     public void setSchema(ProtobufSchema schema)
@@ -1022,8 +1032,13 @@ public class ProtobufGenerator extends GeneratorBase
     protected void _releaseBuffers() {
         byte[] b = _currBuffer;
         if (b != null) {
-            _ioContext.releaseWriteEncodingBuffer(b);
             _currBuffer = null;
+            byte[] b2 = _origCurrBuffer;
+            // 07-Mar-2016, tatu: Crude, but until jackson-core 2.8, need
+            //    to work around an issue by only returning current buffer
+            //    if it is early same as original, or larger
+            byte[] toRelease = ((b == b2) || (b.length > b2.length)) ? b : b2;
+            _ioContext.releaseWriteEncodingBuffer(toRelease);
         }
     }
 

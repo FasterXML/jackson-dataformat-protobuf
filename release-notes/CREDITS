@@ -6,6 +6,9 @@ Here are people who have contributed to development of this project:
 Tatu Saloranta, tatu.saloranta@iki.fi: author
 
 Damiaan van der Kruk (dvdkruk@github)
-
   * Contributed #11: Add Support for Generating Protobuf Schema From POJO Definition
    (2.7.0)
+
+Charles Swanberg (afterthought@github)
+  * Reported #14: Problem with larger datasets - error releasing buffers
+   (2.7.2)
