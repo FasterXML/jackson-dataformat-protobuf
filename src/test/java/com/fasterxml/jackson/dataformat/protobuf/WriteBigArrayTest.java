@@ -21,8 +21,6 @@ public class WriteBigArrayTest extends ProtobufTestBase
             +"}\n"
     ;
 
-    final ObjectMapper MAPPER = new ObjectMapper(new ProtobufFactory());
-
     final ProtobufSchema SPARSE_STRING_SCHEMA;
     final ProtobufSchema PACKED_STRING_SCHEMA;
 
@@ -39,8 +37,8 @@ public class WriteBigArrayTest extends ProtobufTestBase
 
     public void testStringArraySparseWithLongValues() throws Exception
     {
-        
-        final ObjectWriter w = MAPPER.writer(SPARSE_STRING_SCHEMA);
+        final ObjectMapper mapper = new ObjectMapper(new ProtobufFactory());
+        final ObjectWriter w = mapper.writer(SPARSE_STRING_SCHEMA);
         StringBuilder sb = new StringBuilder();
         do {
             sb.append("Jexabel");
@@ -49,7 +47,7 @@ public class WriteBigArrayTest extends ProtobufTestBase
         final int longLen = LONG_NAME.length();
 
         List<String> strings = new ArrayList<String>();
-        final int COUNT = 128000 / longLen;
+        final int COUNT = 260000 / longLen;
         for (int i = 0; i < COUNT; ++i) {
             strings.add(LONG_NAME);
         }
@@ -76,16 +74,18 @@ public class WriteBigArrayTest extends ProtobufTestBase
     // and then do something bit more sizable
     public void testStringArraySparseLong() throws Exception
     {
-        final ObjectWriter w = MAPPER.writer(SPARSE_STRING_SCHEMA);
+        final int COUNT = 35000;
+        final ObjectMapper mapper = new ObjectMapper(new ProtobufFactory());
+        final ObjectWriter w = mapper.writer(SPARSE_STRING_SCHEMA);
         List<String> strings = new ArrayList<String>();
-        for (int i = 0; i < 4000; ++i) {
+        for (int i = 0; i < COUNT; ++i) {
             strings.add("Value"+i);
         }
         byte[] bytes = w.writeValueAsBytes(new StringArray(strings.toArray(new String[strings.size()])));
         int ptr = 0;
 
         // in case of sparse, same as N copies of a String field
-        for (int i = 0; i < 4000; ++i) {
+        for (int i = 0; i < COUNT; ++i) {
             final String str = "Value"+i;
             byte b = bytes[ptr++];
             if (b != 0xA) {
@@ -101,14 +101,17 @@ public class WriteBigArrayTest extends ProtobufTestBase
 
     public void testStringArrayPackedLong() throws Exception
     {
-        final ObjectWriter w = MAPPER.writer(PACKED_STRING_SCHEMA);
+        final int COUNT = 39600;
+        final ObjectMapper mapper = new ObjectMapper(new ProtobufFactory());
+
+        final ObjectWriter w = mapper.writer(PACKED_STRING_SCHEMA);
         List<String> strings = new ArrayList<String>();
-        for (int i = 0; i < 4000; ++i) {
+        for (int i = 0; i < COUNT; ++i) {
             strings.add("Value"+i);
         }
         byte[] bytes = w.writeValueAsBytes(new StringArray(strings.toArray(new String[strings.size()])));
         int ptr = 0;
-
+        
         assertEquals(0xA, bytes[ptr++]);
 
         // big enough to actually require 3 bytes (above 0x3FFF bytes)
@@ -119,7 +122,7 @@ public class WriteBigArrayTest extends ProtobufTestBase
         assertEquals(bytes.length - 4, len);
         
         // in case of sparse, same as N copies of a String field
-        for (int i = 0; i < 4000; ++i) {
+        for (int i = 0; i < COUNT; ++i) {
             final String str = "Value"+i;
             assertEquals(str.length(), bytes[ptr++]);
             for (int x = 0; x < str.length(); ++x) {
