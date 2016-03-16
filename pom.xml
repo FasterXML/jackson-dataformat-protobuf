@@ -22,16 +22,13 @@ abstractions.
     <tag>HEAD</tag>
   </scm>
 
-  <properties>
-    <jackson.version.core>2.7.3-SNAPSHOT</jackson.version.core>
+    <jackson.version.core>2.7.3</jackson.version.core>
 
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
     <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
     <!-- Default OSGi import is fine, export _should_ be, but due to shading play it safe -->
     <osgi.export>${project.groupId}.protobuf.*; version=${project.version}</osgi.export>
     <osgi.private>com.squareup.protoparser.*</osgi.private>
-
-  </properties>
 
   <dependencies>
     <!-- Extends Jackson core; uses protostuff libs for parsing, generation -->

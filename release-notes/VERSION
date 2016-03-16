@@ -4,7 +4,7 @@ Project: jackson-dataformat-protobuf
 === Releases ===
 ------------------------------------------------------------------------
 
-2.7.3 (not released yet)
+2.7.3 (16-Mar-2016)
 
 #14: Problem with larger datasets - error releasing buffers
  (reported by Charles S)
