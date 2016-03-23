@@ -19,8 +19,8 @@ import com.squareup.protoparser.TypeElement;
  * {@link com.fasterxml.jackson.databind.ObjectMapper#acceptJsonFormatVisitor}
  * which will invoke necessary callbacks.
  */
-public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor {
-
+public class ProtobufSchemaGenerator extends ProtoBufSchemaVisitor
+{
 	protected HashSet<JavaType> _generated;
 
 	protected JavaType _rootType;

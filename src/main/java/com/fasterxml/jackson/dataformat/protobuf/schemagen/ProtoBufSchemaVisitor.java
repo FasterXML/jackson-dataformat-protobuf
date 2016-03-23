@@ -17,8 +17,9 @@ import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor
 import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonStringFormatVisitor;
 import com.squareup.protoparser.TypeElement;
 
-public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base implements TypeElementBuilder {
-
+public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base
+    implements TypeElementBuilder
+{
 	protected DefinedTypeElementBuilders _definedTypeElementBuilders;
 
 	protected TypeElementBuilder _builder;
@@ -67,9 +68,9 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 	}
 
 	/*
-	 * /**********************************************************************
-	 * /* Callbacks
-	 * /**********************************************************************
+	/**********************************************************************
+	/* Callbacks
+	/**********************************************************************
 	 */
 
 	@Override
@@ -127,9 +128,9 @@ public class ProtoBufSchemaVisitor extends JsonFormatVisitorWrapper.Base impleme
 	}
 
 	/*
-	 * /**********************************************************************
-	 * /* Internal methods
-	 * /**********************************************************************
+	/**********************************************************************
+	/* Internal methods
+	/**********************************************************************
 	 */
 
 	protected <T> T _throwUnsupported() {

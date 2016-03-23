@@ -74,7 +74,6 @@ public class MessageElementVisitor extends JsonObjectFormatVisitor.Base implemen
         FieldElement.Builder fBuilder = FieldElement.builder();
 
         fBuilder.name(writer.getName());
-
         fBuilder.tag(nextTag(writer));
 
         JavaType type = writer.getType();
