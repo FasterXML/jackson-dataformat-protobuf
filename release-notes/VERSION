@@ -4,6 +4,11 @@ Project: jackson-dataformat-protobuf
 === Releases ===
 ------------------------------------------------------------------------
 
+2.7.7 (not yet released)
+
+dataformats-binary#27: Fixed long deserialization problem for longs of ~13digit length
+ (contributed by Michael Z)
+
 2.7.6 (23-Jul-2016)
 2.7.5 (11-Jun-2016)
 2.7.4 (29-Apr-2016)
