@@ -23,7 +23,7 @@ abstractions.
   </scm>
 
   <properties>
-    <jackson.version.core>2.7.6</jackson.version.core>
+    <jackson.version.core>2.7.7</jackson.version.core>
 
     <packageVersion.dir>com/fasterxml/jackson/dataformat/protobuf</packageVersion.dir>
     <packageVersion.package>${project.groupId}.protobuf</packageVersion.package>
