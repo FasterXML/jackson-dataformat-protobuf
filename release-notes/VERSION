@@ -4,6 +4,10 @@ Project: jackson-dataformat-protobuf
 === Releases ===
 ------------------------------------------------------------------------
 
+2.7.10 (not yet released)
+
+dataformats-binary#85: _decode32Bits() bug in ProtobufParser
+
 2.7.9 (04-Feb-2017)
 2.7.8 (26-Sep-2016)
 2.7.7 (27-Aug-2016)
